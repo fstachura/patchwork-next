@@ -8,8 +8,6 @@ package web
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/getpatchwork/patchwork/pkg/db"
 )
 
@@ -34,7 +32,7 @@ func (h *webHandler) ProjectList(w http.ResponseWriter, r *http.Request) {
 func (h *webHandler) ProjectDetail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
-	linkname := chi.URLParam(r, "linkname")
+	linkname := urlParam(r, "linkname")
 
 	project, err := q.GetProjectByLinkname(linkname)
 	if err != nil {

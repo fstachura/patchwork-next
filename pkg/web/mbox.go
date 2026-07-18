@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -199,8 +198,8 @@ func formatAddr(name, email string) string {
 }
 
 func (h *webHandler) PatchMboxPage(w http.ResponseWriter, r *http.Request) {
-	linkname := chi.URLParam(r, "linkname")
-	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
+	linkname := urlParam(r, "linkname")
+	rawMsgid := urlParam(r, "msgid")
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
 	msgid := "<" + rawMsgid + ">"
@@ -249,8 +248,8 @@ func (h *webHandler) servePatchMbox(w http.ResponseWriter, patch db.Patch, proje
 }
 
 func (h *webHandler) CoverMboxPage(w http.ResponseWriter, r *http.Request) {
-	linkname := chi.URLParam(r, "linkname")
-	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
+	linkname := urlParam(r, "linkname")
+	rawMsgid := urlParam(r, "msgid")
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
 	msgid := "<" + rawMsgid + ">"
@@ -393,8 +392,8 @@ func (h *webHandler) seriesPatchMbox(w http.ResponseWriter, r *http.Request, pat
 func (h *webHandler) BundleMbox(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
-	username := chi.URLParam(r, "username")
-	bundlename := chi.URLParam(r, "bundlename")
+	username := urlParam(r, "username")
+	bundlename := urlParam(r, "bundlename")
 
 	var bundle db.Bundle
 	err := q.DB.NewSelect().

@@ -23,7 +23,7 @@ import (
 func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
-	linkname := chi.URLParam(r, "linkname")
+	linkname := urlParam(r, "linkname")
 
 	project, err := q.GetProjectByLinkname(linkname)
 	if err != nil {
@@ -175,7 +175,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
 	user := getWebUser(r)
-	linkname := chi.URLParam(r, "linkname")
+	linkname := urlParam(r, "linkname")
 
 	if !h.validateCSRF(r) {
 		http.Redirect(w, r, "/project/"+linkname+"/list/", http.StatusFound)
@@ -298,8 +298,8 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
-	linkname := chi.URLParam(r, "linkname")
-	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
+	linkname := urlParam(r, "linkname")
+	rawMsgid := urlParam(r, "msgid")
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
 	msgid := "<" + rawMsgid + ">"
@@ -481,8 +481,8 @@ func (h *webHandler) PatchUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
-	linkname := chi.URLParam(r, "linkname")
-	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
+	linkname := urlParam(r, "linkname")
+	rawMsgid := urlParam(r, "msgid")
 	msgid := "<" + rawMsgid + ">"
 
 	if !h.validateCSRF(r) {
@@ -556,8 +556,8 @@ func (h *webHandler) CommentAddressed(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
-	linkname := chi.URLParam(r, "linkname")
-	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
+	linkname := urlParam(r, "linkname")
+	rawMsgid := urlParam(r, "msgid")
 	msgid := "<" + rawMsgid + ">"
 	commentID, _ := strconv.ParseInt(chi.URLParam(r, "commentID"), 10, 32)
 
@@ -576,8 +576,8 @@ func (h *webHandler) CommentAddressed(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *webHandler) PatchRawPage(w http.ResponseWriter, r *http.Request) {
-	linkname := chi.URLParam(r, "linkname")
-	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
+	linkname := urlParam(r, "linkname")
+	rawMsgid := urlParam(r, "msgid")
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
 	msgid := "<" + rawMsgid + ">"

@@ -7,7 +7,6 @@ package web
 
 import (
 	"net/http"
-	"net/url"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -17,8 +16,8 @@ import (
 )
 
 func (h *webHandler) CoverDetailPage(w http.ResponseWriter, r *http.Request) {
-	linkname := chi.URLParam(r, "linkname")
-	rawMsgid, _ := url.PathUnescape(chi.URLParam(r, "msgid"))
+	linkname := urlParam(r, "linkname")
+	rawMsgid := urlParam(r, "msgid")
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
 	msgid := "<" + rawMsgid + ">"

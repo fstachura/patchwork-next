@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/uptrace/bun"
 
 	"github.com/getpatchwork/patchwork/pkg/db"
@@ -45,7 +44,7 @@ func (h *webHandler) BundleList(w http.ResponseWriter, r *http.Request) {
 func (h *webHandler) ProjectBundleList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
-	linkname := chi.URLParam(r, "linkname")
+	linkname := urlParam(r, "linkname")
 
 	project, err := q.GetProjectByLinkname(linkname)
 	if err != nil {
@@ -86,8 +85,8 @@ type bundleDetailData struct {
 func (h *webHandler) BundleDetail(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
-	username := chi.URLParam(r, "username")
-	bundlename := chi.URLParam(r, "bundlename")
+	username := urlParam(r, "username")
+	bundlename := urlParam(r, "bundlename")
 	pc := h.pageCtx(r)
 	user := getWebUser(r)
 
@@ -149,8 +148,8 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
 	user := getWebUser(r)
-	username := chi.URLParam(r, "username")
-	bundlename := chi.URLParam(r, "bundlename")
+	username := urlParam(r, "username")
+	bundlename := urlParam(r, "bundlename")
 
 	if !h.validateCSRF(r) {
 		http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s/", username, bundlename), http.StatusFound)

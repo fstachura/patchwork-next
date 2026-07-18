@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/getpatchwork/patchwork/pkg/db"
 	"github.com/getpatchwork/patchwork/pkg/events"
 	"github.com/getpatchwork/patchwork/pkg/log"
@@ -128,7 +126,7 @@ func (h *webHandler) ConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	q := db.GetQueries(ctx)
 	pc := h.pageCtx(r)
-	key := chi.URLParam(r, "key")
+	key := urlParam(r, "key")
 
 	var conf db.EmailConfirmation
 	err := q.DB.NewSelect().Model(&conf).

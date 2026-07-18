@@ -30,6 +30,11 @@ import (
 	"github.com/getpatchwork/patchwork/pkg/log"
 )
 
+func urlParam(r *http.Request, key string) string {
+	v, _ := url.PathUnescape(chi.URLParam(r, key))
+	return v
+}
+
 //go:embed static/*
 var staticFS embed.FS
 
