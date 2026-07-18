@@ -116,7 +116,7 @@ func (h *webHandler) ProfileUpdate(w http.ResponseWriter, r *http.Request) {
 	user := getWebUser(r)
 
 	if !h.validateCSRF(r) {
-		http.Redirect(w, r, "/user/", http.StatusFound)
+		http.Redirect(w, r, "/user", http.StatusFound)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *webHandler) ProfileUpdate(w http.ResponseWriter, r *http.Request) {
 		Set("show_ids = ?", showIds).
 		Exec(ctx)
 
-	http.Redirect(w, r, "/user/", http.StatusFound)
+	http.Redirect(w, r, "/user", http.StatusFound)
 }
 
 func (h *webHandler) LinkEmail(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +173,7 @@ func (h *webHandler) LinkEmail(w http.ResponseWriter, r *http.Request) {
 	if baseURL == "" {
 		baseURL = "http://" + r.Host
 	}
-	link := fmt.Sprintf("%s/confirm/%s/", baseURL, conf.Key)
+	link := fmt.Sprintf("%s/confirm/%s", baseURL, conf.Key)
 	body := fmt.Sprintf(
 		"Please click the following link to link this email to your Patchwork account:\n\n%s\n",
 		link,
@@ -198,13 +198,13 @@ func (h *webHandler) UnlinkEmail(w http.ResponseWriter, r *http.Request) {
 	user := getWebUser(r)
 
 	if !h.validateCSRF(r) {
-		http.Redirect(w, r, "/user/", http.StatusFound)
+		http.Redirect(w, r, "/user", http.StatusFound)
 		return
 	}
 
 	personID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 32)
 	if err != nil {
-		http.Redirect(w, r, "/user/", http.StatusFound)
+		http.Redirect(w, r, "/user", http.StatusFound)
 		return
 	}
 
@@ -214,12 +214,12 @@ func (h *webHandler) UnlinkEmail(w http.ResponseWriter, r *http.Request) {
 		Where("user_id = ?", user.ID).
 		Scan(ctx)
 	if err != nil {
-		http.Redirect(w, r, "/user/", http.StatusFound)
+		http.Redirect(w, r, "/user", http.StatusFound)
 		return
 	}
 
 	if person.Email == user.Email {
-		http.Redirect(w, r, "/user/", http.StatusFound)
+		http.Redirect(w, r, "/user", http.StatusFound)
 		return
 	}
 
@@ -228,7 +228,7 @@ func (h *webHandler) UnlinkEmail(w http.ResponseWriter, r *http.Request) {
 		Set("user_id = NULL").
 		Exec(ctx)
 
-	http.Redirect(w, r, "/user/", http.StatusFound)
+	http.Redirect(w, r, "/user", http.StatusFound)
 }
 
 func (h *webHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
@@ -273,7 +273,7 @@ func (h *webHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		Set("password = ?", db.HashPassword(newPassword)).
 		Exec(ctx)
 
-	http.Redirect(w, r, "/user/", http.StatusFound)
+	http.Redirect(w, r, "/user", http.StatusFound)
 }
 
 func (h *webHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
@@ -285,7 +285,7 @@ func (h *webHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
 	user := getWebUser(r)
 
 	if !h.validateCSRF(r) {
-		http.Redirect(w, r, "/user/", http.StatusFound)
+		http.Redirect(w, r, "/user", http.StatusFound)
 		return
 	}
 
@@ -306,7 +306,7 @@ func (h *webHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/user/", http.StatusFound)
+	http.Redirect(w, r, "/user", http.StatusFound)
 }
 
 func (h *webHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
@@ -351,7 +351,7 @@ func (h *webHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	if baseURL == "" {
 		baseURL = "http://" + r.Host
 	}
-	link := fmt.Sprintf("%s/password-reset/%s/", baseURL, conf.Key)
+	link := fmt.Sprintf("%s/password-reset/%s", baseURL, conf.Key)
 	body := fmt.Sprintf(
 		"Please click the following link to reset your password:\n\n%s\n\nThis link will expire in 7 days.\n",
 		link,

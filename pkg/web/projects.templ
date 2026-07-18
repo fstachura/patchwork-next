@@ -25,7 +25,7 @@ templ projectListPage(pc pageContext, projects []db.Project) {
 							</a>
 						</h3>
 						<p>
-							<a href={ templ.SafeURL("/project/" + p.Linkname + "/list/") }>
+							<a href={ templ.SafeURL("/project/" + p.Linkname + "/list") }>
 								View patches
 							</a>
 						</p>
@@ -77,7 +77,7 @@ templ projectDetailPage(pc pageContext, project db.Project, maintainers []db.Use
 					<tr>
 						<th>Patches</th>
 						<td>
-							<a href={ templ.SafeURL("/project/" + project.Linkname + "/list/") }>
+							<a href={ templ.SafeURL("/project/" + project.Linkname + "/list") }>
 								{ intStr(nPatches) }
 							</a>
 							if nArchived > 0 {

@@ -55,7 +55,7 @@ func (h *webHandler) TodoLists(w http.ResponseWriter, r *http.Request) {
 
 	if len(todos) == 1 {
 		http.Redirect(w, r,
-			"/user/todo/"+todos[0].Project.Linkname+"/",
+			"/user/todo/"+todos[0].Project.Linkname,
 			http.StatusFound)
 		return
 	}

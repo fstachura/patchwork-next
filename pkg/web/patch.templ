@@ -40,17 +40,17 @@ type patchDetailData struct {
 templ downloadLinks(submissionid int, linkname, msgid string, series *db.Series) {
 	<download-links>
 		<button>{ submissionid }</button>
-		<a href={ templ.SafeURL(patchURL(linkname, msgid) + "mbox/") }>mbox</a>
+		<a href={ templ.SafeURL(patchURL(linkname, msgid) + "/mbox") }>mbox</a>
 		if series != nil {
-			<a href={ templ.SafeURL(fmt.Sprintf("/series/%d/mbox/", series.ID)) }>series</a>
+			<a href={ templ.SafeURL(fmt.Sprintf("/series/%d/mbox", series.ID)) }>series</a>
 		}
 	</download-links>
 }
 
 templ patchDetailPage(d patchDetailData) {
 	@layout(d.Patch.Name, []breadcrumb{
-		{Label: d.Project.Name, URL: "/project/" + d.Project.Linkname + "/"},
-		{Label: "Patches", URL: "/project/" + d.Project.Linkname + "/list/"},
+		{Label: d.Project.Name, URL: "/project/" + d.Project.Linkname},
+		{Label: "Patches", URL: "/project/" + d.Project.Linkname + "/list"},
 		{Label: truncate(d.Patch.Name, 72)},
 	}, d.PC) {
 		<title-bar>
@@ -259,7 +259,7 @@ templ patchDetailPage(d patchDetailData) {
 			<ul>
 				for _, r := range d.Related {
 					<li>
-						<a href={ templ.SafeURL(fmt.Sprintf("/patch/%d/", r.ID)) }>
+						<a href={ templ.SafeURL(fmt.Sprintf("/patch/%d", r.ID)) }>
 							{ r.Name }
 						</a>
 					</li>
@@ -293,7 +293,7 @@ templ patchDetailPage(d patchDetailData) {
 							}
 						}
 						if d.CanEdit {
-							<form method="post" action={ templ.SafeURL(fmt.Sprintf("%scomment/%d/addressed", patchURL(d.Project.Linkname, d.Patch.Msgid), c.ID)) } style="display:inline">
+							<form method="post" action={ templ.SafeURL(fmt.Sprintf("%s/comment/%d/addressed", patchURL(d.Project.Linkname, d.Patch.Msgid), c.ID)) } style="display:inline">
 								<input type="hidden" name="csrftoken" value={ d.PC.CSRFToken }/>
 								if c.Addressed != nil && *c.Addressed {
 									<input type="hidden" name="addressed" value="false"/>

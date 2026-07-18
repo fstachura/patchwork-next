@@ -29,7 +29,7 @@ templ todoListsPage(pc pageContext, todos []todoProject) {
 						for _, t := range todos {
 							<tr>
 								<td>
-									<a href={ templ.SafeURL("/user/todo/" + t.Project.Linkname + "/") }>
+									<a href={ templ.SafeURL("/user/todo/" + t.Project.Linkname) }>
 										{ t.Project.Name }
 									</a>
 								</td>
@@ -45,7 +45,7 @@ templ todoListsPage(pc pageContext, todos []todoProject) {
 
 templ todoListPage(pc pageContext, project db.Project, patches []db.Patch) {
 	@layout("Todo", []breadcrumb{
-		{Label: "Todo", URL: "/user/todo/"},
+		{Label: "Todo", URL: "/user/todo"},
 		{Label: project.Name},
 	}, pc) {
 		<h1>Todo: { project.Name }</h1>

@@ -106,7 +106,7 @@ func (h *webHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	if baseURL == "" {
 		baseURL = "http://" + r.Host
 	}
-	link := fmt.Sprintf("%s/confirm/%s/", baseURL, conf.Key)
+	link := fmt.Sprintf("%s/confirm/%s", baseURL, conf.Key)
 	body := fmt.Sprintf(
 		"Please click the following link to confirm your registration:\n\n%s\n\nThis link will expire in 7 days.\n",
 		link,

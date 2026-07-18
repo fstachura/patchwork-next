@@ -50,7 +50,7 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 		Where("project_id = ?", project.ID)
 
 	var filters []appliedFilter
-	baseQuery := fmt.Sprintf("/project/%s/list/", linkname)
+	baseQuery := fmt.Sprintf("/project/%s/list", linkname)
 
 	sq, filters = applyWebFilters(q.Ctx, q.DB, sq, params, baseQuery)
 
@@ -178,7 +178,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 	linkname := urlParam(r, "linkname")
 
 	if !h.validateCSRF(r) {
-		http.Redirect(w, r, "/project/"+linkname+"/list/", http.StatusFound)
+		http.Redirect(w, r, "/project/"+linkname+"/list", http.StatusFound)
 		return
 	}
 
@@ -187,7 +187,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 	patchIDs := r.Form["patch_id"]
 
 	if len(patchIDs) == 0 {
-		http.Redirect(w, r, "/project/"+linkname+"/list/", http.StatusFound)
+		http.Redirect(w, r, "/project/"+linkname+"/list", http.StatusFound)
 		return
 	}
 
@@ -294,7 +294,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Redirect(w, r, "/project/"+linkname+"/list/", http.StatusFound)
+	http.Redirect(w, r, "/project/"+linkname+"/list", http.StatusFound)
 }
 
 func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {

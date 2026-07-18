@@ -154,17 +154,17 @@ func personName(p *db.Person) string {
 func patchURL(linkname, msgid string) string {
 	clean := strings.TrimPrefix(msgid, "<")
 	clean = strings.TrimSuffix(clean, ">")
-	return fmt.Sprintf("/project/%s/patch/%s/", linkname, url.PathEscape(clean))
+	return fmt.Sprintf("/project/%s/patch/%s", linkname, url.PathEscape(clean))
 }
 
 func coverURL(linkname, msgid string) string {
 	clean := strings.TrimPrefix(msgid, "<")
 	clean = strings.TrimSuffix(clean, ">")
-	return fmt.Sprintf("/project/%s/cover/%s/", linkname, url.PathEscape(clean))
+	return fmt.Sprintf("/project/%s/cover/%s", linkname, url.PathEscape(clean))
 }
 
 func sortURL(d patchListData, newSort string) string {
-	return fmt.Sprintf("/project/%s/list/?order=%s%s",
+	return fmt.Sprintf("/project/%s/list?order=%s%s",
 		d.Project.Linkname, newSort, d.BaseQuery)
 }
 

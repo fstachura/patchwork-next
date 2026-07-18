@@ -25,8 +25,8 @@ type coverDetailData struct {
 
 templ coverDetailPage(d coverDetailData) {
 	@layout(d.Cover.Name, []breadcrumb{
-		{Label: d.Project.Name, URL: "/project/" + d.Project.Linkname + "/"},
-		{Label: "Patches", URL: "/project/" + d.Project.Linkname + "/list/"},
+		{Label: d.Project.Name, URL: "/project/" + d.Project.Linkname},
+		{Label: "Patches", URL: "/project/" + d.Project.Linkname + "/list"},
 		{Label: truncate(d.Cover.Name, 72)},
 	}, d.PC) {
 		<submission-meta>

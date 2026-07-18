@@ -22,7 +22,7 @@ func (h *webHandler) ProjectList(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(projects) == 1 {
 		http.Redirect(w, r,
-			"/project/"+projects[0].Linkname+"/list/",
+			"/project/"+projects[0].Linkname+"/list",
 			http.StatusFound)
 		return
 	}

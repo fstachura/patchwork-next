@@ -12,7 +12,7 @@ templ registerPage(pc pageContext, errors []string) {
 			for _, e := range errors {
 				<error-msg>{ e }</error-msg>
 			}
-			<form method="post" action="/register/">
+			<form method="post" action="/register">
 				<input type="hidden" name="csrftoken" value={ pc.CSRFToken }/>
 				<input type="text" name="username" placeholder="Username" required/>
 				<input type="email" name="email" placeholder="Email" required/>

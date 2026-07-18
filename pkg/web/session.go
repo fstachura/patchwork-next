@@ -126,7 +126,7 @@ func (h *webHandler) validateCSRF(r *http.Request) bool {
 
 func requireLogin(w http.ResponseWriter, r *http.Request) bool {
 	if getWebUser(r) == nil {
-		http.Redirect(w, r, "/user/login/?next="+r.URL.Path, http.StatusFound)
+		http.Redirect(w, r, "/user/login?next="+r.URL.Path, http.StatusFound)
 		return false
 	}
 	return true

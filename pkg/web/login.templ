@@ -12,14 +12,14 @@ templ loginPage(pc pageContext, errMsg string, next string) {
 			if errMsg != "" {
 				<error-msg>{ errMsg }</error-msg>
 			}
-			<form method="post" action="/user/login/">
+			<form method="post" action="/user/login">
 				<input type="hidden" name="csrftoken" value={ pc.CSRFToken }/>
 				<input type="text" name="username" placeholder="Username" required autofocus/>
 				<input type="password" name="password" placeholder="Password" required/>
 				<input type="hidden" name="next" value={ next }/>
 				<button type="submit">Login</button>
 			</form>
-			<p><a href="/user/password-reset/">Forgot password?</a></p>
+			<p><a href="/user/password-reset">Forgot password?</a></p>
 		</auth-form>
 	}
 }

@@ -28,7 +28,7 @@ templ bundleListPage(d bundleListData) {
 							<tr>
 								<td>
 									if b.Owner != nil {
-										<a href={ templ.SafeURL(fmt.Sprintf("/bundle/%s/%s/", b.Owner.Username, b.Name)) }>
+										<a href={ templ.SafeURL(fmt.Sprintf("/bundle/%s/%s", b.Owner.Username, b.Name)) }>
 											{ b.Name }
 										</a>
 									} else {
@@ -37,7 +37,7 @@ templ bundleListPage(d bundleListData) {
 								</td>
 								<td>
 									if b.Project != nil {
-										<a href={ templ.SafeURL("/project/" + b.Project.Linkname + "/list/") }>
+										<a href={ templ.SafeURL("/project/" + b.Project.Linkname + "/list") }>
 											{ b.Project.Linkname }
 										</a>
 									}
@@ -52,11 +52,11 @@ templ bundleListPage(d bundleListData) {
 								<td>{ intStr(b.PatchCount) }</td>
 								<td>
 									if b.Owner != nil {
-										<a href={ templ.SafeURL(fmt.Sprintf("/bundle/%s/%s/mbox/", b.Owner.Username, b.Name)) }>mbox</a>
+										<a href={ templ.SafeURL(fmt.Sprintf("/bundle/%s/%s/mbox", b.Owner.Username, b.Name)) }>mbox</a>
 									}
 								</td>
 								<td>
-									<form method="post" action={ templ.SafeURL(fmt.Sprintf("/bundle/%s/%s/", b.Owner.Username, b.Name)) }>
+									<form method="post" action={ templ.SafeURL(fmt.Sprintf("/bundle/%s/%s", b.Owner.Username, b.Name)) }>
 										<input type="hidden" name="csrftoken" value={ d.PC.CSRFToken }/>
 										<input type="hidden" name="action" value="delete"/>
 										<button type="submit"><danger-action>Delete</danger-action></button>
@@ -83,14 +83,14 @@ templ bundleListPage(d bundleListData) {
 
 templ bundleDetailPage(d bundleDetailData) {
 	@layout(d.Bundle.Name, []breadcrumb{
-		{Label: "Bundles", URL: "/user/bundles/"},
+		{Label: "Bundles", URL: "/user/bundles"},
 		{Label: d.Bundle.Name},
 	}, d.PC) {
 		<title-bar>
 			<h1>{ d.Bundle.Name }</h1>
 			<download-links>
 				if d.Bundle.Owner != nil {
-					<a href={ templ.SafeURL(fmt.Sprintf("/bundle/%s/%s/mbox/", d.Bundle.Owner.Username, d.Bundle.Name)) }>mbox</a>
+					<a href={ templ.SafeURL(fmt.Sprintf("/bundle/%s/%s/mbox", d.Bundle.Owner.Username, d.Bundle.Name)) }>mbox</a>
 				}
 			</download-links>
 		</title-bar>

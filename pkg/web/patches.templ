@@ -38,7 +38,7 @@ type appliedFilter struct {
 
 templ patchListPage(d patchListData) {
 	@layout(d.Project.Name, []breadcrumb{
-		{Label: d.Project.Name, URL: "/project/" + d.Project.Linkname + "/"},
+		{Label: d.Project.Name, URL: "/project/" + d.Project.Linkname},
 		{Label: "Patches"},
 	}, d.PC) {
 		<patch-count>
@@ -55,7 +55,7 @@ templ patchListPage(d patchListData) {
 			}
 			{ intStr(d.Total) } patches
 			{ " | " }
-			<a href={ templ.SafeURL("/project/" + d.Project.Linkname + "/bundles/") }>Bundles</a>
+			<a href={ templ.SafeURL("/project/" + d.Project.Linkname + "/bundles") }>Bundles</a>
 			{ " | " }
 			<button type="button" id="toggle-toolbar">Filters &amp; Actions &#9662;</button>
 		</patch-count>
@@ -85,7 +85,7 @@ templ patchListPage(d patchListData) {
 				<button type="submit">Filter</button>
 			</form>
 		</patch-filters>
-		<form method="post" action={ templ.SafeURL("/project/" + d.Project.Linkname + "/list/") }>
+		<form method="post" action={ templ.SafeURL("/project/" + d.Project.Linkname + "/list") }>
 			<input type="hidden" name="csrftoken" value={ d.PC.CSRFToken }/>
 			if d.PC.User != nil {
 				<patch-actions class="toolbar" style="display:none">

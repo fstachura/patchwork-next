@@ -152,7 +152,7 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 	bundlename := urlParam(r, "bundlename")
 
 	if !h.validateCSRF(r) {
-		http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s/", username, bundlename), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s", username, bundlename), http.StatusFound)
 		return
 	}
 
@@ -183,7 +183,7 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 			serverErrorPage(w, "delete bundle", err)
 			return
 		}
-		http.Redirect(w, r, "/user/bundles/", http.StatusFound)
+		http.Redirect(w, r, "/user/bundles", http.StatusFound)
 
 	case "update":
 		newName := strings.TrimSpace(r.FormValue("name"))
@@ -197,9 +197,9 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 				serverErrorPage(w, "update bundle", err)
 				return
 			}
-			http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s/", username, newName), http.StatusFound)
+			http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s", username, newName), http.StatusFound)
 		} else {
-			http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s/", username, bundlename), http.StatusFound)
+			http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s", username, bundlename), http.StatusFound)
 		}
 
 	case "remove-patches":
@@ -216,9 +216,9 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s/", username, bundlename), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s", username, bundlename), http.StatusFound)
 
 	default:
-		http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s/", username, bundlename), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("/bundle/%s/%s", username, bundlename), http.StatusFound)
 	}
 }
