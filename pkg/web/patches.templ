@@ -130,14 +130,14 @@ templ patchListPage(d patchListData) {
 							if d.PC.User != nil {
 								<th class="checkbox"><input type="checkbox" title="Select all" id="select-all"/></th>
 							}
-							@sortHeader("Patch", "name", d)
-							<th>Series</th>
-							<th>{ strings.Join(d.TagAbbrevs, "/") }</th>
-							<th><span title="Success / Warning / Fail">S/W/F</span></th>
-							@sortHeader("Date", "date", d)
-							@sortHeader("Submitter", "submitter", d)
-							@sortHeader("Delegate", "delegate", d)
-							@sortHeader("State", "state", d)
+							@sortHeader("Patch", "name", "", d)
+							<th class="col-series">Series</th>
+							<th class="col-tags">{ strings.Join(d.TagAbbrevs, "/") }</th>
+							<th class="col-checks"><span title="Success / Warning / Fail">S/W/F</span></th>
+							@sortHeader("Date", "date", "col-date", d)
+							@sortHeader("Submitter", "submitter", "col-submitter", d)
+							@sortHeader("Delegate", "delegate", "col-delegate", d)
+							@sortHeader("State", "state", "col-state", d)
 						</tr>
 					</thead>
 					<tbody>
@@ -207,7 +207,7 @@ templ patchRow(d *patchListData, p *db.Patch) {
 			{ truncate(p.Name, 100) }
 		</a>
 	</td>
-	<td>
+	<td class="col-series">
 		if p.SeriesID != nil {
 			<a href={ templ.SafeURL(fmt.Sprintf("/project/%s/list/?series=%d", d.Project.Linkname, *p.SeriesID)) }>
 				if name, ok := d.SeriesNames[*p.SeriesID]; ok && name != "" {
@@ -218,28 +218,28 @@ templ patchRow(d *patchListData, p *db.Patch) {
 			</a>
 		}
 	</td>
-	<td>
+	<td class="col-tags">
 		@tagCounts(d.TagAbbrevs, p.Tags)
 	</td>
-	<td>
+	<td class="col-checks">
 		@checkCounts(p.CheckCounts)
 	</td>
-	<td>{ p.Date.Format("2006-01-02") }</td>
-	<td>
+	<td class="col-date">{ p.Date.Format("2006-01-02") }</td>
+	<td class="col-submitter">
 		if p.Submitter != nil {
 			<a href={ templ.SafeURL(fmt.Sprintf("/project/%s/list/?submitter=%d", d.Project.Linkname, p.SubmitterID)) }>
 				{ personName(p.Submitter) }
 			</a>
 		}
 	</td>
-	<td>
+	<td class="col-delegate">
 		if p.Delegate != nil {
 			<a href={ templ.SafeURL(fmt.Sprintf("/project/%s/list/?delegate=%d", d.Project.Linkname, *p.DelegateID)) }>
 				{ p.Delegate.Username }
 			</a>
 		}
 	</td>
-	<td>
+	<td class="col-state">
 		if p.State != nil {
 			{ p.State.Name }
 		}
@@ -309,8 +309,8 @@ templ checkState(s db.CheckState) {
 	}
 }
 
-templ sortHeader(label string, field string, d patchListData) {
-	<th>
+templ sortHeader(label string, field string, class string, d patchListData) {
+	<th class={ class }>
 		if strings.TrimPrefix(d.Sort, "-") == field {
 			if strings.HasPrefix(d.Sort, "-") {
 				<a href={ templ.SafeURL(sortURL(d, field)) }>{ label } &#9650;</a>

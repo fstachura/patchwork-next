@@ -37,31 +37,32 @@ templ layout(title string, crumbs []breadcrumb, pc pageContext) {
 		<body>
 			<header>
 				<nav>
-					<ul>
-						<li><a href="/">Patchwork</a></li>
+					<a class="nav-brand" href="/">Patchwork</a>
+					<button class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
+					<div class="nav-menu">
 						for _, c := range crumbs {
-							<li>
+							<breadcrumb>
 								if c.URL != "" {
 									<a href={ templ.SafeURL(c.URL) }>{ c.Label }</a>
 								} else {
 									<span>{ c.Label }</span>
 								}
-							</li>
+							</breadcrumb>
 						}
-					</ul>
-					<span>
-						if pc.User != nil {
-							<a href="/user/bundles">Bundles</a>
-							<a href="/user">{ pc.User.Username }</a>
-							<form method="post" action="/user/logout">
-								<input type="hidden" name="csrftoken" value={ pc.CSRFToken }/>
-								<button type="submit">Logout</button>
-							</form>
-						} else {
-							<a href="/user/login">Login</a>
-							<a href="/register">Register</a>
-						}
-					</span>
+						<nav-links>
+							if pc.User != nil {
+								<a href="/user/bundles">Bundles</a>
+								<a href="/user">{ pc.User.Username }</a>
+								<form method="post" action="/user/logout">
+									<input type="hidden" name="csrftoken" value={ pc.CSRFToken }/>
+									<button type="submit">Logout</button>
+								</form>
+							} else {
+								<a href="/user/login">Login</a>
+								<a href="/register">Register</a>
+							}
+						</nav-links>
+					</div>
 				</nav>
 				if pc.NavHTML != "" {
 					@templ.Raw(pc.NavHTML)
@@ -73,6 +74,15 @@ templ layout(title string, crumbs []breadcrumb, pc pageContext) {
 			<main>
 				{ children... }
 			</main>
+			<script>
+				(function() {
+					var btn = document.querySelector(".nav-toggle");
+					var menu = document.querySelector(".nav-menu");
+					btn.addEventListener("click", function() {
+						menu.classList.toggle("open");
+					});
+				})();
+			</script>
 			<footer>
 				Patchwork { pc.Version } | <a href="/api/docs">API</a>
 				if pc.FooterHTML != "" {
