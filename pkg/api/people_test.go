@@ -14,7 +14,7 @@ import (
 func TestPeopleList(t *testing.T) {
 	s := newTestServer(t)
 	s.insertPerson(t, "person@test.com", "Test Person")
-	items := getList(t, s, "/api/1.4/people/")
+	items := getList(t, s, "/api/1.4/people")
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -29,7 +29,7 @@ func TestPeopleList(t *testing.T) {
 
 func TestPeopleListEmpty(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/people/")
+	items := getList(t, s, "/api/1.4/people")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}
@@ -48,7 +48,7 @@ func TestPeopleSearch(t *testing.T) {
 
 func TestPersonCreate405(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.authRequest(t, "POST", "/api/1.4/people/", "", map[string]string{"name": "x"})
+	resp := s.authRequest(t, "POST", "/api/1.4/people", "", map[string]string{"name": "x"})
 	if resp.StatusCode != 405 {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
@@ -66,7 +66,7 @@ func TestPersonDetail(t *testing.T) {
 func TestPersonDetailAnonymous(t *testing.T) {
 	s := newTestServer(t)
 	s.insertPerson(t, "anon@test", "Anon")
-	resp := s.get(t, "/api/1.4/people/")
+	resp := s.get(t, "/api/1.4/people")
 	if resp.StatusCode != 200 {
 		t.Errorf("status = %d, want 200", resp.StatusCode)
 	}

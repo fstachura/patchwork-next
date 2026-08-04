@@ -191,7 +191,7 @@ func (h *handler) UpdateUser(
 func userToResponse(u *db.User, base string) UserResponse {
 	return UserResponse{
 		ID:        u.ID,
-		URL:       fmt.Sprintf("%s/users/%d/", base, u.ID),
+		URL:       fmt.Sprintf("%s/users/%d", base, u.ID),
 		Username:  u.Username,
 		FirstName: u.FirstName,
 		LastName:  u.LastName,

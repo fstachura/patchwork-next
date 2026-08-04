@@ -157,18 +157,18 @@ func applyCoverFilters(q *bun.SelectQuery, input *ListCoversInput) *bun.SelectQu
 func coverToListResponse(c *db.Cover, base string) CoverListResponse {
 	r := CoverListResponse{
 		ID:       c.ID,
-		URL:      fmt.Sprintf("%s/covers/%d/", base, c.ID),
+		URL:      fmt.Sprintf("%s/covers/%d", base, c.ID),
 		Msgid:    c.Msgid,
 		Date:     c.Date,
 		Name:     c.Name,
-		Mbox:     fmt.Sprintf("%s/covers/%d/mbox/", base, c.ID),
-		Comments: strp(fmt.Sprintf("%s/covers/%d/comments/", base, c.ID)),
+		Mbox:     fmt.Sprintf("%s/covers/%d/mbox", base, c.ID),
+		Comments: strp(fmt.Sprintf("%s/covers/%d/comments", base, c.ID)),
 		Series:   []SeriesEmbedded{},
 	}
 	if c.Project != nil {
 		r.Project = projectToEmbedded(c.Project, base)
 		if c.Project.WebURL != "" {
-			r.WebURL = strp(fmt.Sprintf("%s/cover/%s/",
+			r.WebURL = strp(fmt.Sprintf("%s/cover/%s",
 				c.Project.WebURL, c.Msgid))
 		}
 		archiveURL := listArchiveURL(c.Project, c.Msgid)
@@ -182,9 +182,9 @@ func coverToListResponse(c *db.Cover, base string) CoverListResponse {
 	for _, s := range c.SeriesList {
 		r.Series = append(r.Series, SeriesEmbedded{
 			ID:   s.ID,
-			URL:  fmt.Sprintf("%s/series/%d/", base, s.ID),
+			URL:  fmt.Sprintf("%s/series/%d", base, s.ID),
 			Name: s.Name,
-			Mbox: fmt.Sprintf("%s/series/%d/mbox/", base, s.ID),
+			Mbox: fmt.Sprintf("%s/series/%d/mbox", base, s.ID),
 		})
 	}
 	return r

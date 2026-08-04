@@ -19,7 +19,7 @@ func TestEventActor(t *testing.T) {
 		VALUES (?, 'patch-state-changed', datetime('now'), ?, ?)`,
 		projID, patchID, userID)
 
-	items := getList(t, s, "/api/1.4/events/")
+	items := getList(t, s, "/api/1.4/events")
 	if len(items) != 1 {
 		t.Fatalf("got %d", len(items))
 	}
@@ -33,7 +33,7 @@ func TestEventActorNull(t *testing.T) {
 	s.exec(t, `INSERT INTO event (project_id, category, date, patch_id)
 		VALUES (?, 'patch-created', datetime('now'), ?)`, projID, patchID)
 
-	items := getList(t, s, "/api/1.4/events/")
+	items := getList(t, s, "/api/1.4/events")
 	if items[0]["actor"] != nil {
 		t.Errorf("actor should be null, got %v", items[0]["actor"])
 	}
@@ -41,7 +41,7 @@ func TestEventActorNull(t *testing.T) {
 
 func TestEventCreate405(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.authRequest(t, "POST", "/api/1.4/events/", "", map[string]string{"category": "x"})
+	resp := s.authRequest(t, "POST", "/api/1.4/events", "", map[string]string{"category": "x"})
 	if resp.StatusCode != 405 {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
@@ -54,7 +54,7 @@ func TestEventPayload(t *testing.T) {
 	s.exec(t, `INSERT INTO event (project_id, category, date, patch_id)
 		VALUES (?, 'patch-created', datetime('now'), ?)`, projID, patchID)
 
-	items := getList(t, s, "/api/1.4/events/")
+	items := getList(t, s, "/api/1.4/events")
 	if len(items) != 1 {
 		t.Fatalf("got %d", len(items))
 	}
@@ -161,7 +161,7 @@ func TestEventsFilterSeries(t *testing.T) {
 
 func TestEventsListEmpty(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/events/")
+	items := getList(t, s, "/api/1.4/events")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}
@@ -192,7 +192,7 @@ func TestEventsOrderByDate(t *testing.T) {
 	s.exec(t, `INSERT INTO event (project_id, category, date)
 		VALUES (?, 'patch-created', datetime('now'))`, projID)
 
-	items := getList(t, s, "/api/1.4/events/")
+	items := getList(t, s, "/api/1.4/events")
 	if len(items) != 2 {
 		t.Fatalf("got %d, want 2", len(items))
 	}
@@ -210,7 +210,7 @@ func TestEventsWithData(t *testing.T) {
 		VALUES (?, 'patch-created', datetime('now'), ?)
 	`, projID, patchID)
 
-	items := getList(t, s, "/api/1.4/events/")
+	items := getList(t, s, "/api/1.4/events")
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}

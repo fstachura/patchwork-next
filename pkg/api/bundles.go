@@ -382,16 +382,16 @@ func insertBundlePatches(ctx context.Context, idb bun.IDB, bundleID int, patchID
 func bundleToResponse(b *db.Bundle, base string) BundleResponse {
 	r := BundleResponse{
 		ID:      b.ID,
-		URL:     fmt.Sprintf("%s/bundles/%d/", base, b.ID),
+		URL:     fmt.Sprintf("%s/bundles/%d", base, b.ID),
 		Name:    b.Name,
 		Public:  b.Public,
-		Mbox:    fmt.Sprintf("%s/bundles/%d/mbox/", base, b.ID),
+		Mbox:    fmt.Sprintf("%s/bundles/%d/mbox", base, b.ID),
 		Patches: make([]PatchEmbedded, len(b.BundlePatches)),
 	}
 	if b.Project != nil {
 		r.Project = projectToEmbedded(b.Project, base)
 		if b.Project.WebURL != "" {
-			r.WebURL = strp(fmt.Sprintf("%s/bundle/%s/%s/",
+			r.WebURL = strp(fmt.Sprintf("%s/bundle/%s/%s",
 				b.Project.WebURL, b.Owner.Username, b.Name))
 		}
 	}

@@ -43,7 +43,7 @@ func TestCoverCommentList(t *testing.T) {
 		VALUES ('<cc-comment@test>', datetime('now'), '', ?, ?, 'lgtm')`,
 		personID, coverID)
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/covers/%d/comments/", coverID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/covers/%d/comments", coverID))
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -54,7 +54,7 @@ func TestCoverCommentList(t *testing.T) {
 
 func TestCoverCommentListInvalidCover(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.get(t, "/api/1.4/covers/invalid/comments/")
+	resp := s.get(t, "/api/1.4/covers/invalid/comments")
 	if resp.StatusCode != 422 {
 		t.Errorf("status = %d, want 422", resp.StatusCode)
 	}
@@ -62,7 +62,7 @@ func TestCoverCommentListInvalidCover(t *testing.T) {
 
 func TestCoverCommentListNonExistent(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/covers/99999/comments/")
+	items := getList(t, s, "/api/1.4/covers/99999/comments")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}
@@ -74,7 +74,7 @@ func TestPatchCommentCreate405(t *testing.T) {
 	patchID := s.insertPatch(t, projID, "<pcc@test>", "p")
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/patches/%d/comments/", patchID), "",
+		fmt.Sprintf("/api/1.4/patches/%d/comments", patchID), "",
 		map[string]string{"content": "test"})
 	if resp.StatusCode != 405 {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
@@ -119,14 +119,14 @@ func TestPatchCommentList(t *testing.T) {
 	patchID := s.insertPatch(t, projID, "<pc@test>", "p")
 	commentID := s.insertComment(t, patchID, "<comment@test>")
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments/", patchID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments", patchID))
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
 	c := items[0]
 	assertValue(t, c, "id", float64(commentID))
 	assertValue(t, c, "msgid", "<comment@test>")
-	assertContains(t, c, "url", fmt.Sprintf("/patches/%d/comments/%d/", patchID, commentID))
+	assertContains(t, c, "url", fmt.Sprintf("/patches/%d/comments/%d", patchID, commentID))
 	assertField(t, c, "date")
 	assertField(t, c, "addressed")
 	assertNested(t, c, "submitter", "id")
@@ -141,7 +141,7 @@ func TestPatchCommentListEmpty(t *testing.T) {
 	projID := s.insertProject(t)
 	patchID := s.insertPatch(t, projID, "<pce@test>", "p")
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments/", patchID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments", patchID))
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}
@@ -149,7 +149,7 @@ func TestPatchCommentListEmpty(t *testing.T) {
 
 func TestPatchCommentListInvalidPatch(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.get(t, "/api/1.4/patches/invalid/comments/")
+	resp := s.get(t, "/api/1.4/patches/invalid/comments")
 	if resp.StatusCode != 422 {
 		t.Errorf("status = %d, want 422", resp.StatusCode)
 	}
@@ -157,7 +157,7 @@ func TestPatchCommentListInvalidPatch(t *testing.T) {
 
 func TestPatchCommentNonExistentPatch(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/patches/99999/comments/")
+	items := getList(t, s, "/api/1.4/patches/99999/comments")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}
@@ -173,7 +173,7 @@ func TestPatchCommentURLAndSubject(t *testing.T) {
 		VALUES ('<cus-c@test>', datetime('now'), ?, ?, ?, 'ok')`,
 		"Subject: Re: test\n", personID, patchID)
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments/", patchID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments", patchID))
 	if len(items) != 1 {
 		t.Fatalf("got %d", len(items))
 	}

@@ -19,7 +19,7 @@ func TestWebhookCRUD(t *testing.T) {
 
 	// create
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/projects/%d/webhooks/", projID), token,
+		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token,
 		map[string]string{
 			"url":    "http://hook.example.com",
 			"secret": "s3cret",
@@ -40,7 +40,7 @@ func TestWebhookCRUD(t *testing.T) {
 
 	// list
 	resp = s.authRequest(t, "GET",
-		fmt.Sprintf("/api/1.4/projects/%d/webhooks/", projID), token, nil)
+		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token, nil)
 	if resp.StatusCode != 200 {
 		t.Fatalf("list: status = %d", resp.StatusCode)
 	}
@@ -78,7 +78,7 @@ func TestWebhookCRUD(t *testing.T) {
 
 	// list should be empty
 	resp = s.authRequest(t, "GET",
-		fmt.Sprintf("/api/1.4/projects/%d/webhooks/", projID), token, nil)
+		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token, nil)
 	decodeJSON(t, resp, &hooks)
 	if len(hooks) != 0 {
 		t.Errorf("after delete: got %d, want 0", len(hooks))
@@ -93,7 +93,7 @@ func TestWebhookCreateInvalidEvents(t *testing.T) {
 	s.makeMaintainer(t, userID, projID)
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/projects/%d/webhooks/", projID), token,
+		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token,
 		map[string]string{"url": "http://x", "events": "invalid-event"})
 	if resp.StatusCode != 422 {
 		t.Errorf("status = %d, want 400", resp.StatusCode)
@@ -108,7 +108,7 @@ func TestWebhookCreateSpecificEvents(t *testing.T) {
 	s.makeMaintainer(t, userID, projID)
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/projects/%d/webhooks/", projID), token,
+		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token,
 		map[string]string{
 			"url":    "http://x",
 			"secret": "",
@@ -129,7 +129,7 @@ func TestWebhookListAnonymous(t *testing.T) {
 	projID := s.insertProject(t)
 
 	resp := s.authRequest(t, "GET",
-		fmt.Sprintf("/api/1.4/projects/%d/webhooks/", projID), "", nil)
+		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), "", nil)
 	if resp.StatusCode != 401 {
 		t.Errorf("status = %d, want 401", resp.StatusCode)
 	}
@@ -142,7 +142,7 @@ func TestWebhookListNonMaintainer(t *testing.T) {
 	token := s.insertToken(t, userID)
 
 	resp := s.authRequest(t, "GET",
-		fmt.Sprintf("/api/1.4/projects/%d/webhooks/", projID), token, nil)
+		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token, nil)
 	if resp.StatusCode != 403 {
 		t.Errorf("status = %d, want 403", resp.StatusCode)
 	}
@@ -156,7 +156,7 @@ func TestWebhookSecretWriteOnly(t *testing.T) {
 	s.makeMaintainer(t, userID, projID)
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/projects/%d/webhooks/", projID), token,
+		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token,
 		map[string]string{"url": "http://x", "secret": "topsecret", "events": "*"})
 	if resp.StatusCode != 201 {
 		t.Fatalf("status = %d", resp.StatusCode)

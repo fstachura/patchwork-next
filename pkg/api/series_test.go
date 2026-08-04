@@ -12,7 +12,7 @@ import (
 
 func TestSeriesCreate405(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.authRequest(t, "POST", "/api/1.4/series/", "", map[string]string{"name": "x"})
+	resp := s.authRequest(t, "POST", "/api/1.4/series", "", map[string]string{"name": "x"})
 	if resp.StatusCode != 405 {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
@@ -153,7 +153,7 @@ func TestSeriesList(t *testing.T) {
 	projID := s.insertProject(t)
 	personID := s.insertPerson(t, "s@test", "Submitter")
 	seriesID := s.insertSeries(t, projID, personID, "test series")
-	items := getList(t, s, "/api/1.4/series/")
+	items := getList(t, s, "/api/1.4/series")
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -164,8 +164,8 @@ func TestSeriesList(t *testing.T) {
 	assertValue(t, sr, "total", float64(2))
 	assertValue(t, sr, "received_total", float64(0))
 	assertValue(t, sr, "received_all", false)
-	assertContains(t, sr, "url", fmt.Sprintf("/series/%d/", seriesID))
-	assertContains(t, sr, "mbox", fmt.Sprintf("/series/%d/mbox/", seriesID))
+	assertContains(t, sr, "url", fmt.Sprintf("/series/%d", seriesID))
+	assertContains(t, sr, "mbox", fmt.Sprintf("/series/%d/mbox", seriesID))
 	assertField(t, sr, "date")
 	assertField(t, sr, "patches")
 	assertField(t, sr, "metadata")
@@ -177,7 +177,7 @@ func TestSeriesList(t *testing.T) {
 
 func TestSeriesListEmpty(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/series/")
+	items := getList(t, s, "/api/1.4/series")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}

@@ -118,7 +118,7 @@ func personToResponse(p *db.Person, base string) PersonResponse {
 	}
 	r := PersonResponse{
 		ID:    p.ID,
-		URL:   fmt.Sprintf("%s/people/%d/", base, p.ID),
+		URL:   fmt.Sprintf("%s/people/%d", base, p.ID),
 		Name:  name,
 		Email: p.Email,
 	}

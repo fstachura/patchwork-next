@@ -19,7 +19,7 @@ func TestCheckFilterUser(t *testing.T) {
 		(patch_id, user_id, date, state, target_url, context, description)
 		VALUES (?, ?, datetime('now'), 1, '', 'ci', '')`, patchID, userID)
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -34,7 +34,7 @@ func TestCheckUserPopulated(t *testing.T) {
 		(patch_id, user_id, date, state, target_url, context, description)
 		VALUES (?, ?, datetime('now'), 0, '', 'ci', '')`, patchID, userID)
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
 	assertNested(t, items[0], "user", "id")
 	assertNested(t, items[0], "user", "username")
 	assertField(t, items[0], "url")
@@ -42,7 +42,7 @@ func TestCheckUserPopulated(t *testing.T) {
 
 func TestUserCreate405(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.authRequest(t, "POST", "/api/1.4/users/", "", map[string]string{"username": "x"})
+	resp := s.authRequest(t, "POST", "/api/1.4/users", "", map[string]string{"username": "x"})
 	if resp.StatusCode != 405 {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
@@ -114,7 +114,7 @@ func TestUserDetailSelf(t *testing.T) {
 
 func TestUserListAnonymous(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.authRequest(t, "GET", "/api/1.4/users/", "", nil)
+	resp := s.authRequest(t, "GET", "/api/1.4/users", "", nil)
 	if resp.StatusCode != 401 {
 		t.Errorf("status = %d, want 401", resp.StatusCode)
 	}
@@ -125,7 +125,7 @@ func TestUserListAuthenticated(t *testing.T) {
 	userID := s.insertUser(t, "lister", "lister@test")
 	token := s.insertToken(t, userID)
 
-	resp := s.authRequest(t, "GET", "/api/1.4/users/", token, nil)
+	resp := s.authRequest(t, "GET", "/api/1.4/users", token, nil)
 	if resp.StatusCode != 200 {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}

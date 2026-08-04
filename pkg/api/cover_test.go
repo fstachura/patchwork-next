@@ -12,7 +12,7 @@ import (
 
 func TestCoverCreate405(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.authRequest(t, "POST", "/api/1.4/covers/", "", map[string]string{"name": "x"})
+	resp := s.authRequest(t, "POST", "/api/1.4/covers", "", map[string]string{"name": "x"})
 	if resp.StatusCode != 405 {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
@@ -82,7 +82,7 @@ func TestCoverList(t *testing.T) {
 	s := newTestServer(t)
 	projID := s.insertProject(t)
 	coverID := s.insertCover(t, projID, "<c1@test>", "test cover")
-	items := getList(t, s, "/api/1.4/covers/")
+	items := getList(t, s, "/api/1.4/covers")
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -90,9 +90,9 @@ func TestCoverList(t *testing.T) {
 	assertValue(t, c, "id", float64(coverID))
 	assertValue(t, c, "name", "test cover")
 	assertValue(t, c, "msgid", "<c1@test>")
-	assertContains(t, c, "url", fmt.Sprintf("/covers/%d/", coverID))
-	assertContains(t, c, "mbox", fmt.Sprintf("/covers/%d/mbox/", coverID))
-	assertContains(t, c, "comments", fmt.Sprintf("/covers/%d/comments/", coverID))
+	assertContains(t, c, "url", fmt.Sprintf("/covers/%d", coverID))
+	assertContains(t, c, "mbox", fmt.Sprintf("/covers/%d/mbox", coverID))
+	assertContains(t, c, "comments", fmt.Sprintf("/covers/%d/comments", coverID))
 	assertField(t, c, "date")
 	assertField(t, c, "series")
 	assertNested(t, c, "submitter", "id")
@@ -102,7 +102,7 @@ func TestCoverList(t *testing.T) {
 
 func TestCoverListEmpty(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/covers/")
+	items := getList(t, s, "/api/1.4/covers")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}

@@ -19,7 +19,7 @@ func TestBundleList(t *testing.T) {
 	s.exec(t, `INSERT INTO bundle (owner_id, project_id, name, public)
 		VALUES (?, ?, 'my bundle', true)`, userID, projID)
 
-	items := getList(t, s, "/api/1.4/bundles/")
+	items := getList(t, s, "/api/1.4/bundles")
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -33,7 +33,7 @@ func TestBundleList(t *testing.T) {
 
 func TestBundleListEmpty(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/bundles/")
+	items := getList(t, s, "/api/1.4/bundles")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}
@@ -48,7 +48,7 @@ func TestBundleListPublicOnly(t *testing.T) {
 	s.exec(t, `INSERT INTO bundle (owner_id, project_id, name, public)
 		VALUES (?, ?, 'private', false)`, userID, projID)
 
-	items := getList(t, s, "/api/1.4/bundles/")
+	items := getList(t, s, "/api/1.4/bundles")
 	if len(items) != 1 {
 		t.Errorf("got %d, want 1", len(items))
 	}
@@ -71,7 +71,7 @@ func TestBundleListAuthSeesOwnPrivate(t *testing.T) {
 	s.exec(t, `INSERT INTO bundle (owner_id, project_id, name, public)
 		VALUES (?, ?, 'public-one', true)`, otherID, projID)
 
-	resp := s.authRequest(t, "GET", "/api/1.4/bundles/", token, nil)
+	resp := s.authRequest(t, "GET", "/api/1.4/bundles", token, nil)
 	if resp.StatusCode != 200 {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
@@ -189,7 +189,7 @@ func TestBundleCreateAnonymous(t *testing.T) {
 	projID := s.insertProject(t)
 	patchID := s.insertPatch(t, projID, "<ca@test>", "p")
 
-	resp := s.authRequest(t, "POST", "/api/1.4/bundles/", "",
+	resp := s.authRequest(t, "POST", "/api/1.4/bundles", "",
 		map[string]any{"name": "b", "patches": []int{patchID}})
 	if resp.StatusCode != 401 {
 		t.Errorf("status = %d, want 401", resp.StatusCode)
@@ -204,7 +204,7 @@ func TestBundleCreateValid(t *testing.T) {
 	p1 := s.insertPatch(t, projID, "<cv1@test>", "patch 1")
 	p2 := s.insertPatch(t, projID, "<cv2@test>", "patch 2")
 
-	resp := s.authRequest(t, "POST", "/api/1.4/bundles/", token,
+	resp := s.authRequest(t, "POST", "/api/1.4/bundles", token,
 		map[string]any{
 			"name":    "my-bundle",
 			"public":  true,
@@ -235,7 +235,7 @@ func TestBundleCreateEmptyPatches(t *testing.T) {
 	userID := s.insertUser(t, "empty", "empty@test")
 	token := s.insertToken(t, userID)
 
-	resp := s.authRequest(t, "POST", "/api/1.4/bundles/", token,
+	resp := s.authRequest(t, "POST", "/api/1.4/bundles", token,
 		map[string]any{
 			"name":    "empty-bundle",
 			"patches": []int{},
@@ -263,7 +263,7 @@ func TestBundleCreateCrossProject(t *testing.T) {
 		RETURNING id`).Scan(context.Background(), &proj2)
 	p2 := s.insertPatch(t, proj2, "<cp2@test>", "patch 2")
 
-	resp := s.authRequest(t, "POST", "/api/1.4/bundles/", token,
+	resp := s.authRequest(t, "POST", "/api/1.4/bundles", token,
 		map[string]any{
 			"name":    "cross-bundle",
 			"patches": []int{p1, p2},
@@ -283,7 +283,7 @@ func TestBundleUpdateOwner(t *testing.T) {
 	patchID := s.insertPatch(t, projID, "<u1@test>", "p1")
 
 	// create the bundle first
-	resp := s.authRequest(t, "POST", "/api/1.4/bundles/", token,
+	resp := s.authRequest(t, "POST", "/api/1.4/bundles", token,
 		map[string]any{
 			"name":    "orig-name",
 			"public":  false,
@@ -323,7 +323,7 @@ func TestBundleUpdatePatches(t *testing.T) {
 	p2 := s.insertPatch(t, projID, "<up2@test>", "p2")
 	p3 := s.insertPatch(t, projID, "<up3@test>", "p3")
 
-	resp := s.authRequest(t, "POST", "/api/1.4/bundles/", token,
+	resp := s.authRequest(t, "POST", "/api/1.4/bundles", token,
 		map[string]any{
 			"name":    "patch-update",
 			"patches": []int{p1},
@@ -382,7 +382,7 @@ func TestBundleDeleteOwner(t *testing.T) {
 	token := s.insertToken(t, userID)
 	patchID := s.insertPatch(t, projID, "<d1@test>", "p1")
 
-	resp := s.authRequest(t, "POST", "/api/1.4/bundles/", token,
+	resp := s.authRequest(t, "POST", "/api/1.4/bundles", token,
 		map[string]any{
 			"name":    "to-delete",
 			"patches": []int{patchID},

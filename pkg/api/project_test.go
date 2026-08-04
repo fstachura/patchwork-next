@@ -27,7 +27,7 @@ func TestPatchFilterProject(t *testing.T) {
 
 func TestProjectCreate405(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.authRequest(t, "POST", "/api/1.4/projects/", "", map[string]string{"name": "x"})
+	resp := s.authRequest(t, "POST", "/api/1.4/projects", "", map[string]string{"name": "x"})
 	if resp.StatusCode != 405 {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
@@ -87,7 +87,7 @@ func TestProjectDetailByNumericLinkname(t *testing.T) {
 func TestProjectList(t *testing.T) {
 	s := newTestServer(t)
 	projID := s.insertProject(t)
-	items := getList(t, s, "/api/1.4/projects/")
+	items := getList(t, s, "/api/1.4/projects")
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -97,7 +97,7 @@ func TestProjectList(t *testing.T) {
 	assertValue(t, p, "link_name", "test-project")
 	assertValue(t, p, "list_id", "test.example.com")
 	assertValue(t, p, "list_email", "test@test.example.com")
-	assertContains(t, p, "url", fmt.Sprintf("/projects/%d/", projID))
+	assertContains(t, p, "url", fmt.Sprintf("/projects/%d", projID))
 	assertField(t, p, "web_url")
 	assertField(t, p, "maintainers")
 
@@ -109,7 +109,7 @@ func TestProjectList(t *testing.T) {
 
 func TestProjectListEmpty(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/projects/")
+	items := getList(t, s, "/api/1.4/projects")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}

@@ -45,7 +45,7 @@ func registerProjectRoutes(api huma.API, h *handler, prefix string, mw huma.Midd
 func projectToEmbedded(p *db.Project, base string) ProjectEmbedded {
 	e := ProjectEmbedded{
 		ID:              p.ID,
-		URL:             fmt.Sprintf("%s/projects/%d/", base, p.ID),
+		URL:             fmt.Sprintf("%s/projects/%d", base, p.ID),
 		Name:            p.Name,
 		LinkName:        p.Linkname,
 		ListID:          p.Listid,
@@ -67,7 +67,7 @@ func projectToEmbedded(p *db.Project, base string) ProjectEmbedded {
 func projectToResponse(p *db.Project, base string) ProjectResponse {
 	r := ProjectResponse{
 		ID:               p.ID,
-		URL:              fmt.Sprintf("%s/projects/%d/", base, p.ID),
+		URL:              fmt.Sprintf("%s/projects/%d", base, p.ID),
 		Name:             p.Name,
 		LinkName:         p.Linkname,
 		ListID:           p.Listid,

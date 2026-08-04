@@ -19,7 +19,7 @@ func TestCheckCreateInvalidPatch(t *testing.T) {
 	s.makeMaintainer(t, userID, projID)
 
 	resp := s.authRequest(t, "POST",
-		"/api/1.4/patches/99999/checks/", token,
+		"/api/1.4/patches/99999/checks", token,
 		map[string]string{"state": "success", "context": "ci"})
 	if resp.StatusCode != 404 {
 		t.Errorf("status = %d, want 404", resp.StatusCode)
@@ -35,7 +35,7 @@ func TestCheckCreateMissingState(t *testing.T) {
 	s.makeMaintainer(t, userID, projID)
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID), token,
+		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), token,
 		map[string]string{"context": "ci"})
 	if resp.StatusCode != 422 {
 		t.Errorf("status = %d, want 422", resp.StatusCode)
@@ -50,7 +50,7 @@ func TestCheckCreateNonMaintainer(t *testing.T) {
 	token := s.insertToken(t, userID)
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID), token,
+		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), token,
 		map[string]string{"state": "success", "context": "ci"})
 	if resp.StatusCode != 403 {
 		t.Errorf("status = %d, want 403", resp.StatusCode)
@@ -75,7 +75,7 @@ func TestCheckDetail(t *testing.T) {
 
 func TestCheckInvalidPatch(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.get(t, "/api/1.4/patches/99999/checks/")
+	resp := s.get(t, "/api/1.4/patches/99999/checks")
 	var items []map[string]any
 	decodeJSON(t, resp, &items)
 	if len(items) != 0 {
@@ -93,7 +93,7 @@ func TestCheckList(t *testing.T) {
 		VALUES (?, ?, datetime('now'), 1, 'http://ci/1', 'ci/build', 'Build passed')`,
 		patchID, userID)
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -113,7 +113,7 @@ func TestCheckListEmpty(t *testing.T) {
 	projID := s.insertProject(t)
 	patchID := s.insertPatch(t, projID, "<chk@test>", "p")
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}
@@ -128,7 +128,7 @@ func TestCheckStateString(t *testing.T) {
 		(patch_id, user_id, date, state, target_url, context, description)
 		VALUES (?, ?, datetime('now'), 1, '', 'ci', '')`, patchID, userID)
 
-	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID))
+	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -155,7 +155,7 @@ func TestCreateCheckAnonymous(t *testing.T) {
 	patchID := s.insertPatch(t, projID, "<chk-anon@test>", "p")
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID), "",
+		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), "",
 		map[string]string{"state": "success", "context": "ci"})
 	if resp.StatusCode != 401 {
 		t.Errorf("status = %d, want 401", resp.StatusCode)
@@ -171,7 +171,7 @@ func TestCreateCheckInvalidState(t *testing.T) {
 	s.makeMaintainer(t, userID, projID)
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID), token,
+		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), token,
 		map[string]string{"state": "invalid"})
 	if resp.StatusCode != 422 {
 		t.Errorf("status = %d, want 422", resp.StatusCode)
@@ -187,7 +187,7 @@ func TestCreateCheckMaintainer(t *testing.T) {
 	s.makeMaintainer(t, userID, projID)
 
 	resp := s.authRequest(t, "POST",
-		fmt.Sprintf("/api/1.4/patches/%d/checks/", patchID), token,
+		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), token,
 		map[string]string{
 			"state":       "success",
 			"target_url":  "http://ci.example.com/1",

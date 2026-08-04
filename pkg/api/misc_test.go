@@ -13,9 +13,9 @@ import (
 func TestEmptyListsReturnArray(t *testing.T) {
 	s := newTestServer(t)
 	for _, ep := range []string{
-		"/api/1.4/patches/", "/api/1.4/covers/", "/api/1.4/series/",
-		"/api/1.4/projects/", "/api/1.4/people/", "/api/1.4/events/",
-		"/api/1.4/bundles/",
+		"/api/1.4/patches", "/api/1.4/covers", "/api/1.4/series",
+		"/api/1.4/projects", "/api/1.4/people", "/api/1.4/events",
+		"/api/1.4/bundles",
 	} {
 		t.Run(ep, func(t *testing.T) {
 			resp := s.get(t, ep)
@@ -41,7 +41,7 @@ func TestIndexEndpoint(t *testing.T) {
 
 func TestIndexVersionPrefix(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.get(t, "/api/1.4/")
+	resp := s.get(t, "/api/1.4")
 	if resp.StatusCode != 200 {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}
@@ -93,11 +93,11 @@ func TestReadWithoutAuth(t *testing.T) {
 	s.insertPatch(t, projID, "<noauth@test>", "public patch")
 
 	for _, path := range []string{
-		"/api/1.4/projects/",
-		"/api/1.4/patches/",
-		"/api/1.4/covers/",
-		"/api/1.4/series/",
-		"/api/1.4/events/",
+		"/api/1.4/projects",
+		"/api/1.4/patches",
+		"/api/1.4/covers",
+		"/api/1.4/series",
+		"/api/1.4/events",
 	} {
 		resp := s.get(t, path)
 		if resp.StatusCode != 200 {

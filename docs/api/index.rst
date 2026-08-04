@@ -47,14 +47,14 @@ __ https://curl.haxx.se/
 
    $ curl -sL https://patchwork.example.com/api/ | jq
    {
-       "bundles": "https://patchwork.example.com/api/1.4/bundles/",
-       "covers": "https://patchwork.example.com/api/1.4/covers/",
-       "events": "https://patchwork.example.com/api/1.4/events/",
-       "patches": "https://patchwork.example.com/api/1.4/patches/",
-       "people": "https://patchwork.example.com/api/1.4/people/",
-       "projects": "https://patchwork.example.com/api/1.4/projects/",
-       "series": "https://patchwork.example.com/api/1.4/series/",
-       "users": "https://patchwork.example.com/api/1.4/users/"
+       "bundles": "https://patchwork.example.com/api/1.4/bundles",
+       "covers": "https://patchwork.example.com/api/1.4/covers",
+       "events": "https://patchwork.example.com/api/1.4/events",
+       "patches": "https://patchwork.example.com/api/1.4/patches",
+       "people": "https://patchwork.example.com/api/1.4/people",
+       "projects": "https://patchwork.example.com/api/1.4/projects",
+       "series": "https://patchwork.example.com/api/1.4/series",
+       "users": "https://patchwork.example.com/api/1.4/users"
    }
 
 Tools like `curl` and libraries like `requests` can be used to build anything

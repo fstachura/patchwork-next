@@ -12,7 +12,7 @@ import (
 
 func TestPatchCreate405(t *testing.T) {
 	s := newTestServer(t)
-	resp := s.authRequest(t, "POST", "/api/1.4/patches/", "", map[string]string{"name": "x"})
+	resp := s.authRequest(t, "POST", "/api/1.4/patches", "", map[string]string{"name": "x"})
 	if resp.StatusCode != 405 {
 		t.Errorf("status = %d, want 405", resp.StatusCode)
 	}
@@ -134,7 +134,7 @@ func TestPatchList(t *testing.T) {
 	s := newTestServer(t)
 	projID := s.insertProject(t)
 	patchID := s.insertPatch(t, projID, "<p1@test>", "test patch")
-	items := getList(t, s, "/api/1.4/patches/")
+	items := getList(t, s, "/api/1.4/patches")
 	if len(items) != 1 {
 		t.Fatalf("got %d, want 1", len(items))
 	}
@@ -144,10 +144,10 @@ func TestPatchList(t *testing.T) {
 	assertValue(t, p, "id", float64(patchID))
 	assertValue(t, p, "name", "test patch")
 	assertValue(t, p, "msgid", "<p1@test>")
-	assertContains(t, p, "url", fmt.Sprintf("/patches/%d/", patchID))
-	assertContains(t, p, "mbox", fmt.Sprintf("/patches/%d/mbox/", patchID))
-	assertContains(t, p, "comments", fmt.Sprintf("/patches/%d/comments/", patchID))
-	assertContains(t, p, "checks", fmt.Sprintf("/patches/%d/checks/", patchID))
+	assertContains(t, p, "url", fmt.Sprintf("/patches/%d", patchID))
+	assertContains(t, p, "mbox", fmt.Sprintf("/patches/%d/mbox", patchID))
+	assertContains(t, p, "comments", fmt.Sprintf("/patches/%d/comments", patchID))
+	assertContains(t, p, "checks", fmt.Sprintf("/patches/%d/checks", patchID))
 	assertField(t, p, "date")
 	assertField(t, p, "tags")
 	assertField(t, p, "series")
@@ -181,7 +181,7 @@ func TestPatchList(t *testing.T) {
 
 func TestPatchListEmpty(t *testing.T) {
 	s := newTestServer(t)
-	items := getList(t, s, "/api/1.4/patches/")
+	items := getList(t, s, "/api/1.4/patches")
 	if len(items) != 0 {
 		t.Errorf("got %d, want 0", len(items))
 	}

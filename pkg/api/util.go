@@ -24,7 +24,7 @@ func boolp(b bool) *bool    { return &b }
 func userToEmbedded(u *db.User, base string) UserEmbedded {
 	return UserEmbedded{
 		ID:        u.ID,
-		URL:       fmt.Sprintf("%s/users/%d/", base, u.ID),
+		URL:       fmt.Sprintf("%s/users/%d", base, u.ID),
 		Username:  u.Username,
 		FirstName: u.FirstName,
 		LastName:  u.LastName,
@@ -39,7 +39,7 @@ func personToEmbedded(p *db.Person, base string) PersonEmbedded {
 	}
 	return PersonEmbedded{
 		ID:    p.ID,
-		URL:   fmt.Sprintf("%s/people/%d/", base, p.ID),
+		URL:   fmt.Sprintf("%s/people/%d", base, p.ID),
 		Name:  name,
 		Email: p.Email,
 	}
@@ -344,7 +344,7 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 		}
 		s.Dependencies = make([]string, len(depIDs))
 		for j, id := range depIDs {
-			s.Dependencies[j] = fmt.Sprintf("%s/series/%d/", base, id)
+			s.Dependencies[j] = fmt.Sprintf("%s/series/%d", base, id)
 		}
 
 		var revIDs []int
@@ -357,11 +357,11 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 		}
 		s.Dependents = make([]string, len(revIDs))
 		for j, id := range revIDs {
-			s.Dependents[j] = fmt.Sprintf("%s/series/%d/", base, id)
+			s.Dependents[j] = fmt.Sprintf("%s/series/%d", base, id)
 		}
 
 		if s.PreviousSeriesID != nil {
-			u := fmt.Sprintf("%s/series/%d/", base, *s.PreviousSeriesID)
+			u := fmt.Sprintf("%s/series/%d", base, *s.PreviousSeriesID)
 			s.PreviousSeries = &u
 		}
 
@@ -375,20 +375,20 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 		}
 		s.NextSeries = make([]string, len(nextIDs))
 		for j, id := range nextIDs {
-			s.NextSeries[j] = fmt.Sprintf("%s/series/%d/", base, id)
+			s.NextSeries[j] = fmt.Sprintf("%s/series/%d", base, id)
 		}
 	}
 }
 
 func setCheckURLs(base string, patchID int, checks []db.Check) {
 	for i := range checks {
-		checks[i].URL = fmt.Sprintf("%s/patches/%d/checks/%d/", base, patchID, checks[i].ID)
+		checks[i].URL = fmt.Sprintf("%s/patches/%d/checks/%d", base, patchID, checks[i].ID)
 	}
 }
 
 func populateCommentURLs(base string, patchID int, comments []db.PatchComment) {
 	for i := range comments {
-		comments[i].URL = fmt.Sprintf("%s/patches/%d/comments/%d/",
+		comments[i].URL = fmt.Sprintf("%s/patches/%d/comments/%d",
 			base, patchID, comments[i].ID)
 		comments[i].Subject = parseSubjectFromHeaders(comments[i].Headers)
 	}
@@ -396,7 +396,7 @@ func populateCommentURLs(base string, patchID int, comments []db.PatchComment) {
 
 func populateCoverCommentURLs(base string, coverID int, comments []db.CoverComment) {
 	for i := range comments {
-		comments[i].URL = fmt.Sprintf("%s/covers/%d/comments/%d/",
+		comments[i].URL = fmt.Sprintf("%s/covers/%d/comments/%d",
 			base, coverID, comments[i].ID)
 		comments[i].Subject = parseSubjectFromHeaders(comments[i].Headers)
 	}

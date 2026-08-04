@@ -48,7 +48,7 @@ func PatchStateChanged(
 	}
 
 	baseURL := strings.TrimRight(cfg.Http.BaseURL, "/")
-	patchURL := fmt.Sprintf("%s/patch/%s/",
+	patchURL := fmt.Sprintf("%s/patch/%s",
 		baseURL, strings.TrimSuffix(strings.TrimPrefix(patch.Msgid, "<"), ">"))
 
 	subject := fmt.Sprintf("[%s] Patch state changed: %s",

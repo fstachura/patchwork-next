@@ -223,14 +223,14 @@ func applySeriesFilters(q *bun.SelectQuery, input *ListSeriesInput) *bun.SelectQ
 func seriesToResponse(s *db.Series, base string) SeriesResponse {
 	r := SeriesResponse{
 		ID:            s.ID,
-		URL:           fmt.Sprintf("%s/series/%d/", base, s.ID),
+		URL:           fmt.Sprintf("%s/series/%d", base, s.ID),
 		Name:          s.Name,
 		Date:          s.Date,
 		Version:       s.Version,
 		Total:         s.Total,
 		ReceivedTotal: s.ReceivedTotal,
 		ReceivedAll:   s.ReceivedAll,
-		Mbox:          fmt.Sprintf("%s/series/%d/mbox/", base, s.ID),
+		Mbox:          fmt.Sprintf("%s/series/%d/mbox", base, s.ID),
 		Patches:       make([]PatchEmbedded, len(s.Patches)),
 		Dependencies:  s.Dependencies,
 		Dependents:    s.Dependents,
@@ -238,7 +238,7 @@ func seriesToResponse(s *db.Series, base string) SeriesResponse {
 	if s.Project != nil {
 		r.Project = projectToEmbedded(s.Project, base)
 		if s.Project.WebURL != "" {
-			r.WebURL = strp(fmt.Sprintf("%s/series/%d/",
+			r.WebURL = strp(fmt.Sprintf("%s/series/%d",
 				s.Project.WebURL, s.ID))
 		}
 	}
@@ -269,14 +269,14 @@ func seriesToResponse(s *db.Series, base string) SeriesResponse {
 func patchToEmbedded(p *db.Patch, project *db.Project, base string) PatchEmbedded {
 	e := PatchEmbedded{
 		ID:    p.ID,
-		URL:   fmt.Sprintf("%s/patches/%d/", base, p.ID),
+		URL:   fmt.Sprintf("%s/patches/%d", base, p.ID),
 		Msgid: p.Msgid,
 		Date:  p.Date.Format("2006-01-02T15:04:05"),
 		Name:  p.Name,
-		Mbox:  fmt.Sprintf("%s/patches/%d/mbox/", base, p.ID),
+		Mbox:  fmt.Sprintf("%s/patches/%d/mbox", base, p.ID),
 	}
 	if project != nil && project.WebURL != "" {
-		e.WebURL = strp(fmt.Sprintf("%s/patch/%s/",
+		e.WebURL = strp(fmt.Sprintf("%s/patch/%s",
 			project.WebURL, p.Msgid))
 	}
 	archiveURL := listArchiveURL(project, p.Msgid)
@@ -289,14 +289,14 @@ func patchToEmbedded(p *db.Patch, project *db.Project, base string) PatchEmbedde
 func coverToEmbedded(c *db.Cover, project *db.Project, base string) CoverEmbedded {
 	e := CoverEmbedded{
 		ID:    c.ID,
-		URL:   fmt.Sprintf("%s/covers/%d/", base, c.ID),
+		URL:   fmt.Sprintf("%s/covers/%d", base, c.ID),
 		Msgid: c.Msgid,
 		Date:  c.Date.Format("2006-01-02T15:04:05"),
 		Name:  c.Name,
-		Mbox:  fmt.Sprintf("%s/covers/%d/mbox/", base, c.ID),
+		Mbox:  fmt.Sprintf("%s/covers/%d/mbox", base, c.ID),
 	}
 	if project != nil && project.WebURL != "" {
-		e.WebURL = strp(fmt.Sprintf("%s/cover/%s/",
+		e.WebURL = strp(fmt.Sprintf("%s/cover/%s",
 			project.WebURL, c.Msgid))
 	}
 	archiveURL := listArchiveURL(project, c.Msgid)

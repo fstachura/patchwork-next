@@ -350,16 +350,16 @@ func applyPatchFilters(q *bun.SelectQuery, input *ListPatchesInput) *bun.SelectQ
 func patchToListResponse(p *db.Patch, base string) PatchListResponse {
 	r := PatchListResponse{
 		ID:        p.ID,
-		URL:       fmt.Sprintf("%s/patches/%d/", base, p.ID),
+		URL:       fmt.Sprintf("%s/patches/%d", base, p.ID),
 		Msgid:     p.Msgid,
 		Date:      p.Date,
 		Name:      p.Name,
 		CommitRef: p.CommitRef,
 		PullURL:   p.PullURL,
 		Archived:  p.Archived,
-		Mbox:      fmt.Sprintf("%s/patches/%d/mbox/", base, p.ID),
-		Comments:  strp(fmt.Sprintf("%s/patches/%d/comments/", base, p.ID)),
-		Checks:    fmt.Sprintf("%s/patches/%d/checks/", base, p.ID),
+		Mbox:      fmt.Sprintf("%s/patches/%d/mbox", base, p.ID),
+		Comments:  strp(fmt.Sprintf("%s/patches/%d/comments", base, p.ID)),
+		Checks:    fmt.Sprintf("%s/patches/%d/checks", base, p.ID),
 		Check:     "pending",
 		Tags:      p.Tags,
 		Series:    []SeriesEmbedded{},
@@ -374,7 +374,7 @@ func patchToListResponse(p *db.Patch, base string) PatchListResponse {
 	if p.Project != nil {
 		r.Project = projectToEmbedded(p.Project, base)
 		if p.Project.WebURL != "" {
-			r.WebURL = strp(fmt.Sprintf("%s/patch/%s/",
+			r.WebURL = strp(fmt.Sprintf("%s/patch/%s",
 				p.Project.WebURL, p.Msgid))
 		}
 	}
@@ -394,16 +394,16 @@ func patchToListResponse(p *db.Patch, base string) PatchListResponse {
 	for _, ref := range p.Related {
 		r.Related = append(r.Related, PatchEmbedded{
 			ID:   ref.ID,
-			URL:  fmt.Sprintf("%s/patches/%d/", base, ref.ID),
+			URL:  fmt.Sprintf("%s/patches/%d", base, ref.ID),
 			Name: ref.Name,
 		})
 	}
 	for _, ref := range p.SeriesList {
 		r.Series = append(r.Series, SeriesEmbedded{
 			ID:   ref.ID,
-			URL:  fmt.Sprintf("%s/series/%d/", base, ref.ID),
+			URL:  fmt.Sprintf("%s/series/%d", base, ref.ID),
 			Name: ref.Name,
-			Mbox: fmt.Sprintf("%s/series/%d/mbox/", base, ref.ID),
+			Mbox: fmt.Sprintf("%s/series/%d/mbox", base, ref.ID),
 		})
 	}
 	if r.Related == nil {

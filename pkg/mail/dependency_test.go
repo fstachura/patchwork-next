@@ -157,7 +157,7 @@ func TestDependencyByPatchURL(t *testing.T) {
 		Scan(context.Background(), &patchMsgID)
 	urlMsgID := strings.TrimPrefix(strings.TrimSuffix(patchMsgID, ">"), "<")
 
-	patchURL := fmt.Sprintf("http://test/project/%s/patch/%s/",
+	patchURL := fmt.Sprintf("http://test/project/%s/patch/%s",
 		proj.Linkname, urlMsgID)
 
 	parseMboxTemplate(t, ctx, database, "series/dependency-one-cover.mbox.template",
