@@ -241,6 +241,11 @@ func NewRouter(cfg *config.Config, database *bun.DB, baseURL string, bus db.Even
 		registerBundleRoutes(api, h, prefix, mw)
 		registerWebhookRoutes(api, h, prefix, mw)
 		registerEventRoutes(api, h, prefix, mw)
+
+		r.Get(prefix+"/patches/{id}/mbox", h.patchMbox)
+		r.Get(prefix+"/covers/{id}/mbox", h.coverMbox)
+		r.Get(prefix+"/series/{id}/mbox", h.seriesMbox)
+		r.Get(prefix+"/bundles/{id}/mbox", h.bundleMbox)
 	}
 
 	latest := supportedVersions[len(supportedVersions)-1]
