@@ -20,6 +20,7 @@ import (
 	"github.com/getpatchwork/patchwork/pkg/db/migrations"
 	"github.com/getpatchwork/patchwork/pkg/events"
 	"github.com/getpatchwork/patchwork/pkg/log"
+	"github.com/getpatchwork/patchwork/pkg/mbox"
 	"github.com/getpatchwork/patchwork/pkg/web"
 )
 
@@ -36,6 +37,8 @@ func (c *CLI) Run(ctx *pw.Context) error {
 
 	bus := events.Start(ctx, ctx.DB)
 	defer bus.Shutdown()
+
+	mbox.Version = ctx.Version
 
 	router := web.NewRouter(ctx.Config, ctx.DB, bus, ctx.Version)
 	router.Mount("/", api.NewRouter(ctx.Config, ctx.DB, ctx.Config.Http.BaseURL, bus))

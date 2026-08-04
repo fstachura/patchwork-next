@@ -96,19 +96,13 @@ func TestFormatBasicPatch(t *testing.T) {
 	}
 }
 
-func TestFormatCRLF(t *testing.T) {
+func TestFormatParseable(t *testing.T) {
 	sub := baseSubmission()
 	out := Format(sub)
 
-	_, body := parseMbox(t, out)
-	for i, line := range strings.Split(body, "\n") {
-		if line == "" {
-			continue
-		}
-		if !strings.HasSuffix(line, "\r") {
-			t.Errorf("line %d not CRLF terminated: %q", i+1, line)
-			break
-		}
+	mr := gombox.NewReader(bytes.NewReader(out))
+	if _, err := mr.NextMessage(); err != nil {
+		t.Errorf("output not parseable as mbox: %v", err)
 	}
 }
 
@@ -241,6 +235,48 @@ func TestFormatMboxEnvelope(t *testing.T) {
 	first := string(out[:bytes.IndexByte(out, '\n')])
 	if !strings.HasPrefix(first, "From patchwork ") {
 		t.Errorf("mbox envelope = %q", first)
+	}
+}
+
+func TestFormatSignature(t *testing.T) {
+	Version = "4.0.0"
+	defer func() { Version = "" }()
+
+	sub := baseSubmission()
+	out := Format(sub)
+
+	_, body := parseMbox(t, out)
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	if !strings.Contains(body, "-- \npatchwork 4.0.0\n") {
+		t.Errorf("body missing signature, got:\n%q", body)
+	}
+}
+
+func TestFormatNoSignatureWhenPresent(t *testing.T) {
+	Version = "4.0.0"
+	defer func() { Version = "" }()
+
+	sub := baseSubmission()
+	sub.Diff = "diff --git a/f b/f\n-- \nsome tool 1.0\n"
+	out := Format(sub)
+
+	_, body := parseMbox(t, out)
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	if strings.Contains(body, "patchwork 4.0.0") {
+		t.Error("should not add signature when one already exists")
+	}
+}
+
+func TestFormatNoSignatureWhenVersionEmpty(t *testing.T) {
+	Version = ""
+
+	sub := baseSubmission()
+	out := Format(sub)
+
+	_, body := parseMbox(t, out)
+	body = strings.ReplaceAll(body, "\r\n", "\n")
+	if strings.Contains(body, "-- \n") {
+		t.Error("should not add signature when Version is empty")
 	}
 }
 

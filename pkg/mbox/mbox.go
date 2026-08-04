@@ -9,7 +9,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -24,9 +23,12 @@ import (
 	"github.com/getpatchwork/patchwork/pkg/log"
 )
 
+var Version string
+
 var (
 	postscriptRe   = regexp.MustCompile(`(?m)^-{2,3} ?$`)
 	mboxResponseRe = regexp.MustCompile(`(?mi)^(Tested|Reviewed|Acked|Signed-off|Nacked|Reported)-by:.*$`)
+	signatureRe    = regexp.MustCompile(`(?m)^-- $`)
 	safeFilenameRe = regexp.MustCompile(`[^a-z0-9_.-]+`)
 )
 
@@ -111,10 +113,11 @@ func Format(sub Submission) []byte {
 		body += "\n" + sub.Diff
 	}
 
-	sc := bufio.NewScanner(strings.NewReader(body))
-	for sc.Scan() {
-		fmt.Fprintf(w, "%s\r\n", sc.Text())
+	if Version != "" && !signatureRe.MatchString(body) {
+		body += "-- \npatchwork " + Version + "\n"
 	}
+
+	_, _ = w.Write([]byte(body))
 	mw.Close()
 
 	return buf.Bytes()
