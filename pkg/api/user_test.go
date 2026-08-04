@@ -8,6 +8,9 @@ package api
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckFilterUser(t *testing.T) {
@@ -20,9 +23,7 @@ func TestCheckFilterUser(t *testing.T) {
 		VALUES (?, ?, datetime('now'), 1, '', 'ci', '')`, patchID, userID)
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 }
 
 func TestCheckUserPopulated(t *testing.T) {
@@ -43,9 +44,7 @@ func TestCheckUserPopulated(t *testing.T) {
 func TestUserCreate405(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "POST", "/api/1.4/users", "", map[string]string{"username": "x"})
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestUserDeleteCreate405(t *testing.T) {
@@ -55,9 +54,7 @@ func TestUserDeleteCreate405(t *testing.T) {
 
 	resp := s.authRequest(t, "DELETE",
 		fmt.Sprintf("/api/1.4/users/%d", userID), token, nil)
-	if resp.StatusCode != 405 {
-		t.Errorf("DELETE status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestUserDetail(t *testing.T) {
@@ -67,14 +64,10 @@ func TestUserDetail(t *testing.T) {
 
 	resp := s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/users/%d", userID), token, nil)
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var user map[string]any
 	decodeJSON(t, resp, &user)
-	if user["username"] != "detailer" {
-		t.Errorf("username = %v", user["username"])
-	}
+	assert.Equal(t, "detailer", user["username"])
 }
 
 func TestUserDetailAuthenticated(t *testing.T) {
@@ -85,14 +78,10 @@ func TestUserDetailAuthenticated(t *testing.T) {
 
 	resp := s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/users/%d", u2), token, nil)
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var user map[string]any
 	decodeJSON(t, resp, &user)
-	if user["username"] != "target" {
-		t.Errorf("username = %v", user["username"])
-	}
+	assert.Equal(t, "target", user["username"])
 }
 
 func TestUserDetailSelf(t *testing.T) {
@@ -102,22 +91,16 @@ func TestUserDetailSelf(t *testing.T) {
 
 	resp := s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/users/%d", userID), token, nil)
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var user map[string]any
 	decodeJSON(t, resp, &user)
-	if user["username"] != "self" {
-		t.Errorf("username = %v", user["username"])
-	}
+	assert.Equal(t, "self", user["username"])
 }
 
 func TestUserListAnonymous(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "GET", "/api/1.4/users", "", nil)
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }
 
 func TestUserListAuthenticated(t *testing.T) {
@@ -126,14 +109,10 @@ func TestUserListAuthenticated(t *testing.T) {
 	token := s.insertToken(t, userID)
 
 	resp := s.authRequest(t, "GET", "/api/1.4/users", token, nil)
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var users []map[string]any
 	decodeJSON(t, resp, &users)
-	if len(users) == 0 {
-		t.Error("expected at least 1 user")
-	}
+	assert.NotEmpty(t, users, "expected at least 1 user")
 	assertField(t, users[0], "id")
 	assertField(t, users[0], "username")
 	assertField(t, users[0], "url")
@@ -145,9 +124,7 @@ func TestUserNotFound(t *testing.T) {
 	token := s.insertToken(t, userID)
 
 	resp := s.authRequest(t, "GET", "/api/1.4/users/99999", token, nil)
-	if resp.StatusCode != 404 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestUserUpdateOther(t *testing.T) {
@@ -159,9 +136,7 @@ func TestUserUpdateOther(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/users/%d", u2), token,
 		map[string]string{"first_name": "Hacked"})
-	if resp.StatusCode != 403 {
-		t.Errorf("status = %d, want 403", resp.StatusCode)
-	}
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 func TestUserUpdateSelf(t *testing.T) {
@@ -172,12 +147,8 @@ func TestUserUpdateSelf(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/users/%d", userID), token,
 		map[string]string{"first_name": "Updated"})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var user map[string]any
 	decodeJSON(t, resp, &user)
-	if user["first_name"] != "Updated" {
-		t.Errorf("first_name = %v", user["first_name"])
-	}
+	assert.Equal(t, "Updated", user["first_name"])
 }

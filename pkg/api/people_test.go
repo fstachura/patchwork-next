@@ -9,30 +9,27 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPeopleList(t *testing.T) {
 	s := newTestServer(t)
 	s.insertPerson(t, "person@test.com", "Test Person")
 	items := getList(t, s, "/api/1.4/people")
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 	p := items[0]
 	assertField(t, p, "id")
 	assertField(t, p, "name")
 	assertField(t, p, "email")
-	if p["email"] != "person@test.com" {
-		t.Errorf("email = %v", p["email"])
-	}
+	assert.Equal(t, "person@test.com", p["email"])
 }
 
 func TestPeopleListEmpty(t *testing.T) {
 	s := newTestServer(t)
 	items := getList(t, s, "/api/1.4/people")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPeopleSearch(t *testing.T) {
@@ -41,43 +38,33 @@ func TestPeopleSearch(t *testing.T) {
 	s.insertPerson(t, "bob@test", "Bob")
 
 	items := getList(t, s, "/api/1.4/people/?q=Alice")
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 }
 
 func TestPersonCreate405(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "POST", "/api/1.4/people", "", map[string]string{"name": "x"})
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestPersonDetail(t *testing.T) {
 	s := newTestServer(t)
 	id := s.insertPerson(t, "detail@test", "Detail Person")
 	p := getOne(t, s, fmt.Sprintf("/api/1.4/people/%d", id))
-	if p["name"] != "Detail Person" {
-		t.Errorf("name = %v", p["name"])
-	}
+	assert.Equal(t, "Detail Person", p["name"])
 }
 
 func TestPersonDetailAnonymous(t *testing.T) {
 	s := newTestServer(t)
 	s.insertPerson(t, "anon@test", "Anon")
 	resp := s.get(t, "/api/1.4/people")
-	if resp.StatusCode != 200 {
-		t.Errorf("status = %d, want 200", resp.StatusCode)
-	}
+	assert.Equal(t, 200, resp.StatusCode)
 }
 
 func TestPersonDetailInvalid(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/people/invalid")
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 422", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestPersonDetailLinked(t *testing.T) {
@@ -90,17 +77,13 @@ func TestPersonDetailLinked(t *testing.T) {
 		Scan(context.Background(), &personID)
 
 	p := getOne(t, s, fmt.Sprintf("/api/1.4/people/%d", personID))
-	if p["email"] != "linked@test" {
-		t.Errorf("email = %v", p["email"])
-	}
+	assert.Equal(t, "linked@test", p["email"])
 }
 
 func TestPersonNotFound(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/people/99999")
-	if resp.StatusCode != 404 {
-		t.Fatalf("status = %d, want 404", resp.StatusCode)
-	}
+	require.Equal(t, 404, resp.StatusCode)
 }
 
 func TestPersonUserLinked(t *testing.T) {

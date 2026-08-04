@@ -8,18 +8,17 @@ package mail
 import (
 	"context"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBaseSeriesSinglePatch(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-single-patch.mbox", "test.example.com")
-	if result.patches != 1 {
-		t.Errorf("patches: got %d, want 1", result.patches)
-	}
-	if result.series != 1 {
-		t.Errorf("series: got %d, want 1", result.series)
-	}
+	assert.Equal(t, 1, result.patches)
+	assert.Equal(t, 1, result.series)
 	assertAllPatchesHaveSeries(t, database)
 }
 
@@ -27,15 +26,9 @@ func TestBaseSeriesCoverLetter(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-cover-letter.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.series != 1 {
-		t.Errorf("series: got %d, want 1", result.series)
-	}
+	assert.Equal(t, 2, result.patches)
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 1, result.series)
 	assertAllPatchesInOneSeries(t, database)
 	assertCoverLinkedToSeries(t, database)
 }
@@ -44,15 +37,9 @@ func TestBaseSeriesNoCoverLetter(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-no-cover-letter.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
-	if result.covers != 0 {
-		t.Errorf("covers: got %d, want 0", result.covers)
-	}
-	if result.series != 1 {
-		t.Errorf("series: got %d, want 1", result.series)
-	}
+	assert.Equal(t, 2, result.patches)
+	assert.Equal(t, 0, result.covers)
+	assert.Equal(t, 1, result.series)
 	assertSerialized(t, database, []int{2})
 }
 
@@ -60,177 +47,119 @@ func TestBaseSeriesDeepThreaded(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-deep-threaded.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.series != 1 {
-		t.Errorf("series: got %d, want 1", result.series)
-	}
+	assert.Equal(t, 2, result.patches)
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 1, result.series)
 }
 
 func TestBaseSeriesOutOfOrder(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-out-of-order.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.series != 1 {
-		t.Errorf("series: got %d, want 1", result.series)
-	}
+	assert.Equal(t, 2, result.patches)
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 1, result.series)
 }
 
 func TestBaseSeriesIncomplete(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-incomplete.mbox", "test.example.com")
-	if result.patches != 1 {
-		t.Errorf("patches: got %d, want 1", result.patches)
-	}
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.series != 1 {
-		t.Errorf("series: got %d, want 1", result.series)
-	}
+	assert.Equal(t, 1, result.patches)
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 1, result.series)
 }
 
 func TestBaseSeriesDifferentVersions(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-different-versions.mbox", "test.example.com")
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 4, result.patches)
 }
 
 func TestBaseSeriesNoReferences(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-no-references.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
+	assert.Equal(t, 2, result.patches)
 }
 
 func TestBaseSeriesNoReferencesNoCover(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-no-references-no-cover.mbox", "test.example.com")
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 2, result.patches)
 }
 
 func TestBaseSeriesExtraPatches(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-extra-patches.mbox", "test.example.com")
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.patches != 3 {
-		t.Errorf("patches: got %d, want 3", result.patches)
-	}
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 3, result.patches)
 }
 
 func TestBugsMultipleReferences(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-multiple-references.mbox", "test.example.com")
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 4, result.patches)
 }
 
 func TestBugsMultipleContentTypes(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-multiple-content-types.mbox", "test.example.com")
-	if result.patches != 1 {
-		t.Errorf("patches: got %d, want 1", result.patches)
-	}
-	if result.patchComments != 1 {
-		t.Errorf("patchComments: got %d, want 1", result.patchComments)
-	}
+	assert.Equal(t, 1, result.patches)
+	assert.Equal(t, 1, result.patchComments)
 }
 
 func TestBugsNocover(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-nocover.mbox", "test.example.com")
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 4, result.patches)
 }
 
 func TestBugsNocoverNoversion(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-nocover-noversion.mbox", "test.example.com")
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 4, result.patches)
 }
 
 func TestBugsSpamming(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-spamming.mbox", "test.example.com")
-	if result.patches != 3 {
-		t.Errorf("patches: got %d, want 3", result.patches)
-	}
+	assert.Equal(t, 3, result.patches)
 }
 
 func TestBugsUnnumbered(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-unnumbered.mbox", "test.example.com")
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 2, result.patches)
 }
 
 func TestBugsMixedVersions(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-mixed-versions.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
+	assert.Equal(t, 2, result.patches)
 }
 
 func TestRevisionBasic(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-basic.mbox", "test.example.com")
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
-	if result.covers != 2 {
-		t.Errorf("covers: got %d, want 2", result.covers)
-	}
-	if result.series != 2 {
-		t.Errorf("series: got %d, want 2", result.series)
-	}
+	assert.Equal(t, 4, result.patches)
+	assert.Equal(t, 2, result.covers)
+	assert.Equal(t, 2, result.series)
 	assertSerialized(t, database, []int{2, 2})
 }
 
@@ -238,21 +167,15 @@ func TestRevisionThreadedToSinglePatch(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-threaded-to-single-patch.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
+	assert.Equal(t, 2, result.patches)
 }
 
 func TestRevisionThreadedToCover(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-threaded-to-cover.mbox", "test.example.com")
-	if result.covers != 2 {
-		t.Errorf("covers: got %d, want 2", result.covers)
-	}
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 2, result.covers)
+	assert.Equal(t, 4, result.patches)
 	assertSerialized(t, database, []int{2, 2})
 }
 
@@ -260,12 +183,8 @@ func TestRevisionThreadedToPatch(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-threaded-to-patch.mbox", "test.example.com")
-	if result.covers != 2 {
-		t.Errorf("covers: got %d, want 2", result.covers)
-	}
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 2, result.covers)
+	assert.Equal(t, 4, result.patches)
 	assertSerialized(t, database, []int{2, 2})
 }
 
@@ -273,12 +192,8 @@ func TestRevisionOutOfOrder(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-out-of-order.mbox", "test.example.com")
-	if result.covers != 2 {
-		t.Errorf("covers: got %d, want 2", result.covers)
-	}
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 2, result.covers)
+	assert.Equal(t, 4, result.patches)
 	assertSerialized(t, database, []int{2, 2})
 }
 
@@ -286,12 +201,8 @@ func TestRevisionNoCoverLetter(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-no-cover-letter.mbox", "test.example.com")
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 4, result.patches)
 	assertSerialized(t, database, []int{2, 2})
 }
 
@@ -299,12 +210,8 @@ func TestRevisionUnlabeled(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-unlabeled.mbox", "test.example.com")
-	if result.covers != 2 {
-		t.Errorf("covers: got %d, want 2", result.covers)
-	}
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 2, result.covers)
+	assert.Equal(t, 4, result.patches)
 	assertSerialized(t, database, []int{2, 2})
 }
 
@@ -312,9 +219,7 @@ func TestRevisionUnlabeledNoreferences(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-unlabeled-noreferences.mbox", "test.example.com")
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 4, result.patches)
 	assertSerialized(t, database, []int{2, 2})
 }
 
@@ -322,48 +227,32 @@ func TestRevisedSeriesReplyNocover(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-nocover.mbox", "test.example.com")
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
-	if result.series < 2 {
-		t.Errorf("series: got %d, want >= 2", result.series)
-	}
+	assert.Equal(t, 4, result.patches)
+	assert.GreaterOrEqual(t, result.series, 2)
 }
 
 func TestRevisedSeriesReplyNocoverNoversion(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/bugs-nocover-noversion.mbox", "test.example.com")
-	if result.patches != 4 {
-		t.Errorf("patches: got %d, want 4", result.patches)
-	}
+	assert.Equal(t, 4, result.patches)
 }
 
 func TestMercurialCoverLetter(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/mercurial-cover-letter.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
-	if result.covers != 1 {
-		t.Errorf("covers: got %d, want 1", result.covers)
-	}
-	if result.series != 1 {
-		t.Errorf("series: got %d, want 1", result.series)
-	}
+	assert.Equal(t, 2, result.patches)
+	assert.Equal(t, 1, result.covers)
+	assert.Equal(t, 1, result.series)
 }
 
 func TestMercurialNoCoverLetter(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/mercurial-no-cover-letter.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
-	if result.series != 1 {
-		t.Errorf("series: got %d, want 1", result.series)
-	}
+	assert.Equal(t, 2, result.patches)
+	assert.Equal(t, 1, result.series)
 }
 
 func TestSeriesCorrelation(t *testing.T) {
@@ -374,17 +263,13 @@ func TestSeriesCorrelation(t *testing.T) {
 			withSubject("[PATCH 1/2] first patch"),
 			withMsgID("<series-1-patch-1@test>"),
 			withListID("test.example.com"))
-		if countPatches(t, database) != 1 {
-			t.Error("expected 1 patch")
-		}
+		assert.Equal(t, 1, countPatches(t, database))
 
 		var seriesCount int
 		database.NewSelect().TableExpr("series").
 			ColumnExpr("count(*)").
 			Scan(context.Background(), &seriesCount)
-		if seriesCount != 1 {
-			t.Errorf("expected 1 series, got %d", seriesCount)
-		}
+		assert.Equal(t, 1, seriesCount)
 	})
 
 	t.Run("reply joins series", func(t *testing.T) {
@@ -393,17 +278,13 @@ func TestSeriesCorrelation(t *testing.T) {
 			withMsgID("<series-1-patch-2@test>"),
 			withInReplyTo("<series-1-patch-1@test>"),
 			withListID("test.example.com"))
-		if countPatches(t, database) != 2 {
-			t.Fatal("expected 2 patches")
-		}
+		require.Equal(t, 2, countPatches(t, database))
 
 		var seriesCount int
 		database.NewSelect().TableExpr("series").
 			ColumnExpr("count(*)").
 			Scan(context.Background(), &seriesCount)
-		if seriesCount != 1 {
-			t.Fatalf("expected still 1 series, got %d", seriesCount)
-		}
+		require.Equal(t, 1, seriesCount)
 
 		assertAllPatchesInOneSeries(t, database)
 	})
@@ -414,17 +295,13 @@ func TestSeriesName(t *testing.T) {
 
 	t.Run("cover letter sets name", func(t *testing.T) {
 		result := parseMbox(t, ctx, database, "series/base-cover-letter.mbox", "test.example.com")
-		if result.series != 1 {
-			t.Fatal("expected 1 series")
-		}
+		require.Equal(t, 1, result.series)
 
 		var name string
 		database.NewSelect().TableExpr("series").
 			Column("name").Limit(1).
 			Scan(context.Background(), &name)
-		if name == "" {
-			t.Error("series name should be set from cover letter")
-		}
+		assert.NotEmpty(t, name, "series name should be set from cover letter")
 	})
 }
 
@@ -432,29 +309,21 @@ func TestSeriesNameCoverLetter(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-cover-letter.mbox", "test.example.com")
-	if result.series != 1 {
-		t.Fatal("expected 1 series")
-	}
+	require.Equal(t, 1, result.series)
 
 	var name string
 	database.NewSelect().TableExpr("series").
 		Column("name").Limit(1).
 		Scan(context.Background(), &name)
-	if name == "" {
-		t.Error("series name should be set from cover letter")
-	}
-	if name != "A sample series" {
-		t.Errorf("series name = %q, want %q", name, "A sample series")
-	}
+	assert.NotEmpty(t, name, "series name should be set from cover letter")
+	assert.Equal(t, "A sample series", name)
 }
 
 func TestSeriesNameNoCoverLetter(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-no-cover-letter.mbox", "test.example.com")
-	if result.series != 1 {
-		t.Fatal("expected 1 series")
-	}
+	require.Equal(t, 1, result.series)
 
 	var seriesName, firstPatchName string
 	database.NewSelect().TableExpr("series").
@@ -463,38 +332,28 @@ func TestSeriesNameNoCoverLetter(t *testing.T) {
 	database.NewSelect().TableExpr("patch").
 		Column("name").Where("number = 1").Limit(1).
 		Scan(context.Background(), &firstPatchName)
-	if seriesName == "" {
-		t.Error("series name should be set from first patch")
-	}
-	if seriesName != firstPatchName {
-		t.Errorf("series name = %q, want first patch name %q", seriesName, firstPatchName)
-	}
+	assert.NotEmpty(t, seriesName, "series name should be set from first patch")
+	assert.Equal(t, firstPatchName, seriesName)
 }
 
 func TestSeriesNameOutOfOrder(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-out-of-order.mbox", "test.example.com")
-	if result.series != 1 {
-		t.Fatal("expected 1 series")
-	}
+	require.Equal(t, 1, result.series)
 
 	var name string
 	database.NewSelect().TableExpr("series").
 		Column("name").Limit(1).
 		Scan(context.Background(), &name)
-	if name == "" {
-		t.Error("series name should be set")
-	}
+	assert.NotEmpty(t, name, "series name should be set")
 }
 
 func TestSeriesNameCustom(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-cover-letter.mbox", "test.example.com")
-	if result.series != 1 {
-		t.Fatal("expected 1 series")
-	}
+	require.Equal(t, 1, result.series)
 
 	database.NewRaw("UPDATE series SET name = 'Custom Name'").
 		Exec(context.Background())
@@ -503,18 +362,14 @@ func TestSeriesNameCustom(t *testing.T) {
 	database.NewSelect().TableExpr("series").
 		Column("name").Limit(1).
 		Scan(context.Background(), &name)
-	if name != "Custom Name" {
-		t.Errorf("series name = %q, want Custom Name", name)
-	}
+	assert.Equal(t, "Custom Name", name)
 }
 
 func TestSeriesTotalComplete(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/base-cover-letter.mbox", "test.example.com")
-	if result.patches != 2 {
-		t.Errorf("patches: got %d, want 2", result.patches)
-	}
+	assert.Equal(t, 2, result.patches)
 
 	var total, patchCount int
 	database.NewSelect().TableExpr("series").
@@ -523,9 +378,7 @@ func TestSeriesTotalComplete(t *testing.T) {
 	database.NewSelect().TableExpr("patch").
 		ColumnExpr("count(*)").Where("series_id IS NOT NULL").
 		Scan(context.Background(), &patchCount)
-	if patchCount < total {
-		t.Errorf("series not complete: %d/%d patches", patchCount, total)
-	}
+	assert.GreaterOrEqual(t, patchCount, total, "series not complete")
 }
 
 func TestSeriesReceivedAll(t *testing.T) {
@@ -533,9 +386,7 @@ func TestSeriesReceivedAll(t *testing.T) {
 
 	t.Run("complete", func(t *testing.T) {
 		result := parseMbox(t, ctx, database, "series/base-cover-letter.mbox", "test.example.com")
-		if result.series != 1 {
-			t.Fatal("expected 1 series")
-		}
+		require.Equal(t, 1, result.series)
 
 		var total int
 		var patchCount int
@@ -545,17 +396,13 @@ func TestSeriesReceivedAll(t *testing.T) {
 		database.NewSelect().TableExpr("patch").
 			ColumnExpr("count(*)").Where("series_id IS NOT NULL").
 			Scan(context.Background(), &patchCount)
-		if int(patchCount) < total {
-			t.Errorf("series not complete: %d/%d", patchCount, total)
-		}
+		assert.GreaterOrEqual(t, patchCount, total, "series not complete")
 	})
 
 	t.Run("incomplete", func(t *testing.T) {
 		db2, ctx2, _, _ := testDB(t, "test.example.com")
 		result := parseMbox(t, ctx2, db2, "series/base-incomplete.mbox", "test.example.com")
-		if result.series != 1 {
-			t.Fatal("expected 1 series")
-		}
+		require.Equal(t, 1, result.series)
 
 		var total int
 		var patchCount int
@@ -565,9 +412,7 @@ func TestSeriesReceivedAll(t *testing.T) {
 		db2.NewSelect().TableExpr("patch").
 			ColumnExpr("count(*)").Where("series_id IS NOT NULL").
 			Scan(context.Background(), &patchCount)
-		if int(patchCount) >= total {
-			t.Errorf("series should be incomplete: %d/%d", patchCount, total)
-		}
+		assert.Less(t, patchCount, total, "series should be incomplete")
 	})
 }
 
@@ -604,18 +449,14 @@ func TestNestedSeries(t *testing.T) {
 	database.NewSelect().TableExpr("series").
 		ColumnExpr("count(*)").
 		Scan(context.Background(), &seriesCount)
-	if seriesCount < 2 {
-		t.Errorf("expected at least 2 series, got %d", seriesCount)
-	}
+	assert.GreaterOrEqual(t, seriesCount, 2)
 }
 
 func TestPreviousSeriesLinkage(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-basic.mbox", "test.example.com")
-	if result.series != 2 {
-		t.Fatalf("expected 2 series, got %d", result.series)
-	}
+	require.Equal(t, 2, result.series)
 
 	var series []struct {
 		ID               int
@@ -627,47 +468,32 @@ func TestPreviousSeriesLinkage(t *testing.T) {
 		OrderExpr("version").
 		Scan(context.Background(), &series)
 
-	if len(series) != 2 {
-		t.Fatalf("expected 2 series rows, got %d", len(series))
-	}
+	require.Len(t, series, 2)
 
 	v1 := series[0]
 	v2 := series[1]
 
-	if v1.Version != 1 {
-		t.Errorf("first series version = %d, want 1", v1.Version)
-	}
-	if v2.Version != 2 {
-		t.Errorf("second series version = %d, want 2", v2.Version)
-	}
+	assert.Equal(t, 1, v1.Version)
+	assert.Equal(t, 2, v2.Version)
 
-	if v2.PreviousSeriesID == nil {
-		t.Error("v2 series should have previous_series_id set")
-	} else if *v2.PreviousSeriesID != v1.ID {
-		t.Errorf("v2 previous_series_id = %d, want %d", *v2.PreviousSeriesID, v1.ID)
-	}
+	require.NotNil(t, v2.PreviousSeriesID, "v2 series should have previous_series_id set")
+	assert.Equal(t, v1.ID, *v2.PreviousSeriesID)
 
-	if v1.PreviousSeriesID != nil {
-		t.Error("v1 series should not have previous_series_id")
-	}
+	assert.Nil(t, v1.PreviousSeriesID, "v1 series should not have previous_series_id")
 }
 
 func TestPreviousSeriesThreaded(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "test.example.com")
 
 	result := parseMbox(t, ctx, database, "series/revision-threaded-to-cover.mbox", "test.example.com")
-	if result.series != 2 {
-		t.Fatalf("expected 2 series, got %d", result.series)
-	}
+	require.Equal(t, 2, result.series)
 
 	var count int
 	database.NewSelect().TableExpr("series").
 		ColumnExpr("count(*)").
 		Where("previous_series_id IS NOT NULL").
 		Scan(context.Background(), &count)
-	if count != 1 {
-		t.Errorf("expected 1 series with previous_series_id, got %d", count)
-	}
+	assert.Equal(t, 1, count)
 }
 
 func TestPreviousSeriesNameSimilarity(t *testing.T) {
@@ -688,9 +514,7 @@ func TestPreviousSeriesNameSimilarity(t *testing.T) {
 		ColumnExpr("count(*)").
 		Where("previous_series_id IS NOT NULL").
 		Scan(context.Background(), &count)
-	if count != 1 {
-		t.Errorf("expected 1 series with previous_series_id (name similarity), got %d", count)
-	}
+	assert.Equal(t, 1, count)
 }
 
 func TestCoverNamePriority(t *testing.T) {
@@ -703,9 +527,7 @@ func TestCoverNamePriority(t *testing.T) {
 
 	patchName := "[1/2] the patch name"
 	name := getSeriesName(t, database)
-	if name != patchName {
-		t.Errorf("series name after patch = %q, want %q", name, patchName)
-	}
+	assert.Equal(t, patchName, name)
 
 	parseEmail(t, ctx, database, "cover body\n",
 		withSubject("[PATCH 0/2] the cover name"),
@@ -714,7 +536,5 @@ func TestCoverNamePriority(t *testing.T) {
 		withListID("test.example.com"))
 
 	name = getSeriesName(t, database)
-	if name != "the cover name" {
-		t.Errorf("series name after cover = %q, want %q", name, "the cover name")
-	}
+	assert.Equal(t, "the cover name", name)
 }

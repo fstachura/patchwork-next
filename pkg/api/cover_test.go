@@ -8,22 +8,21 @@ package api
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCoverCreate405(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "POST", "/api/1.4/covers", "", map[string]string{"name": "x"})
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestCoverDelete405(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "DELETE", "/api/1.4/covers/1", "", nil)
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestCoverDetail(t *testing.T) {
@@ -41,13 +40,9 @@ func TestCoverFilterMsgid(t *testing.T) {
 	s.insertCover(t, projID, "<cm-filter@test>", "c")
 
 	items := getList(t, s, "/api/1.4/covers/?msgid=cm-filter@test")
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/covers/?msgid=nope@test")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestCoverFilterProject(t *testing.T) {
@@ -56,13 +51,9 @@ func TestCoverFilterProject(t *testing.T) {
 	s.insertCover(t, projID, "<cf@test>", "c")
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/covers/?project=%d", projID))
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/covers/?project=99999")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestCoverFilterSubmitter(t *testing.T) {
@@ -73,9 +64,7 @@ func TestCoverFilterSubmitter(t *testing.T) {
 	personID := s.insertPerson(t, "test@example.com", "Test Author")
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/covers/?submitter=%d", personID))
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 }
 
 func TestCoverList(t *testing.T) {
@@ -83,9 +72,7 @@ func TestCoverList(t *testing.T) {
 	projID := s.insertProject(t)
 	coverID := s.insertCover(t, projID, "<c1@test>", "test cover")
 	items := getList(t, s, "/api/1.4/covers")
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 	c := items[0]
 	assertValue(t, c, "id", float64(coverID))
 	assertValue(t, c, "name", "test cover")
@@ -103,17 +90,13 @@ func TestCoverList(t *testing.T) {
 func TestCoverListEmpty(t *testing.T) {
 	s := newTestServer(t)
 	items := getList(t, s, "/api/1.4/covers")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestCoverNotFound(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/covers/99999")
-	if resp.StatusCode != 404 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestEventsFilterCover(t *testing.T) {
@@ -124,7 +107,5 @@ func TestEventsFilterCover(t *testing.T) {
 		VALUES (?, 'cover-created', datetime('now'), ?)`, projID, coverID)
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/events/?cover=%d", coverID))
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 }

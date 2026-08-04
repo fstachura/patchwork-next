@@ -9,6 +9,9 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCheckCreateInvalidPatch(t *testing.T) {
@@ -21,9 +24,7 @@ func TestCheckCreateInvalidPatch(t *testing.T) {
 	resp := s.authRequest(t, "POST",
 		"/api/1.4/patches/99999/checks", token,
 		map[string]string{"state": "success", "context": "ci"})
-	if resp.StatusCode != 404 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestCheckCreateMissingState(t *testing.T) {
@@ -37,9 +38,7 @@ func TestCheckCreateMissingState(t *testing.T) {
 	resp := s.authRequest(t, "POST",
 		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), token,
 		map[string]string{"context": "ci"})
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 422", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestCheckCreateNonMaintainer(t *testing.T) {
@@ -52,9 +51,7 @@ func TestCheckCreateNonMaintainer(t *testing.T) {
 	resp := s.authRequest(t, "POST",
 		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), token,
 		map[string]string{"state": "success", "context": "ci"})
-	if resp.StatusCode != 403 {
-		t.Errorf("status = %d, want 403", resp.StatusCode)
-	}
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 func TestCheckDetail(t *testing.T) {
@@ -78,9 +75,7 @@ func TestCheckInvalidPatch(t *testing.T) {
 	resp := s.get(t, "/api/1.4/patches/99999/checks")
 	var items []map[string]any
 	decodeJSON(t, resp, &items)
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestCheckList(t *testing.T) {
@@ -94,9 +89,7 @@ func TestCheckList(t *testing.T) {
 		patchID, userID)
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 	c := items[0]
 	assertValue(t, c, "state", "success")
 	assertValue(t, c, "target_url", "http://ci/1")
@@ -114,9 +107,7 @@ func TestCheckListEmpty(t *testing.T) {
 	patchID := s.insertPatch(t, projID, "<chk@test>", "p")
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestCheckStateString(t *testing.T) {
@@ -129,12 +120,8 @@ func TestCheckStateString(t *testing.T) {
 		VALUES (?, ?, datetime('now'), 1, '', 'ci', '')`, patchID, userID)
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/checks", patchID))
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
-	if items[0]["state"] != "success" {
-		t.Errorf("state = %v, want 'success'", items[0]["state"])
-	}
+	require.Len(t, items, 1)
+	assert.Equal(t, "success", items[0]["state"])
 }
 
 func TestCheckDelete405(t *testing.T) {
@@ -144,9 +131,7 @@ func TestCheckDelete405(t *testing.T) {
 
 	resp := s.authRequest(t, "DELETE",
 		fmt.Sprintf("/api/1.4/patches/%d/checks/1", patchID), "", nil)
-	if resp.StatusCode != 405 {
-		t.Errorf("DELETE status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestCreateCheckAnonymous(t *testing.T) {
@@ -157,9 +142,7 @@ func TestCreateCheckAnonymous(t *testing.T) {
 	resp := s.authRequest(t, "POST",
 		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), "",
 		map[string]string{"state": "success", "context": "ci"})
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }
 
 func TestCreateCheckInvalidState(t *testing.T) {
@@ -173,9 +156,7 @@ func TestCreateCheckInvalidState(t *testing.T) {
 	resp := s.authRequest(t, "POST",
 		fmt.Sprintf("/api/1.4/patches/%d/checks", patchID), token,
 		map[string]string{"state": "invalid"})
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 422", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestCreateCheckMaintainer(t *testing.T) {
@@ -194,17 +175,13 @@ func TestCreateCheckMaintainer(t *testing.T) {
 			"context":     "ci/build",
 			"description": "Build passed",
 		})
-	if resp.StatusCode != 201 {
-		t.Fatalf("status = %d, want 201", resp.StatusCode)
-	}
+	require.Equal(t, 201, resp.StatusCode)
 
 	var result map[string]any
 	decodeJSON(t, resp, &result)
 	assertField(t, result, "id")
 	assertField(t, result, "date")
-	if result["context"] != "ci/build" {
-		t.Errorf("context = %v", result["context"])
-	}
+	assert.Equal(t, "ci/build", result["context"])
 }
 
 func TestPatchCombinedCheck(t *testing.T) {
@@ -220,7 +197,5 @@ func TestPatchCombinedCheck(t *testing.T) {
 		VALUES (?, ?, datetime('now'), 2, '', 'ci/lint', '')`, patchID, userID)
 
 	p := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", patchID))
-	if p["check"] != "warning" {
-		t.Errorf("check = %v, want warning", p["check"])
-	}
+	assert.Equal(t, "warning", p["check"])
 }

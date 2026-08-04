@@ -8,6 +8,9 @@ package api
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStripVersionedFields(t *testing.T) {
@@ -70,13 +73,8 @@ func TestStripVersionedFields(t *testing.T) {
 			result := stripVersionedFields(o, parseVersion(tt.version))
 
 			got, err := json.Marshal(result)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if string(got) != tt.want {
-				t.Errorf("version %s:\n got: %s\nwant: %s",
-					tt.version, got, tt.want)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, string(got))
 		})
 	}
 }
@@ -96,9 +94,7 @@ func TestStripVersionedFieldsSlice(t *testing.T) {
 	items = result.([]item)
 
 	for i, it := range items {
-		if it.WebURL != nil {
-			t.Errorf("items[%d].WebURL = %q, want nil", i, *it.WebURL)
-		}
+		assert.Nil(t, it.WebURL, "items[%d].WebURL", i)
 	}
 }
 

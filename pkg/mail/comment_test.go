@@ -8,6 +8,9 @@ package mail
 import (
 	"context"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCommentCorrelation(t *testing.T) {
@@ -31,24 +34,16 @@ func TestCommentCorrelation(t *testing.T) {
 			withSubject("Re: [PATCH 1/1] test patch"),
 			withInReplyTo(patchMsgID),
 			withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatchComments(t, database) != 1 {
-			t.Error("expected 1 patch comment")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 1, countPatchComments(t, database), "expected 1 patch comment")
 	})
 
 	t.Run("no reply ref", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, "orphan comment",
 			withSubject("Re: something unrelated"),
 			withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatchComments(t, database) != 1 {
-			t.Error("expected still 1 patch comment")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 1, countPatchComments(t, database), "expected still 1 patch comment")
 	})
 }
 
@@ -82,9 +77,7 @@ func TestCommentCorrelationFull(t *testing.T) {
 		withListID("test.example.com"))
 
 	t.Run("patch comment direct reply", func(t *testing.T) {
-		if countPatchComments(t, database) != 1 {
-			t.Errorf("expected 1 patch comment, got %d", countPatchComments(t, database))
-		}
+		assert.Equal(t, 1, countPatchComments(t, database))
 	})
 
 	t.Run("cover comment direct reply", func(t *testing.T) {
@@ -92,9 +85,7 @@ func TestCommentCorrelationFull(t *testing.T) {
 		database.NewSelect().TableExpr("cover_comment").
 			ColumnExpr("count(*)").
 			Scan(context.Background(), &count)
-		if count != 1 {
-			t.Errorf("expected 1 cover comment, got %d", count)
-		}
+		assert.Equal(t, 1, count)
 	})
 
 	t.Run("indirect patch reply via comment", func(t *testing.T) {
@@ -102,10 +93,7 @@ func TestCommentCorrelationFull(t *testing.T) {
 			withSubject("Re: Re: [PATCH 1/1] test"),
 			withInReplyTo(commentOnPatchMsgID),
 			withListID("test.example.com"))
-		if countPatchComments(t, database) != 2 {
-			t.Errorf("expected 2 patch comments after indirect reply, got %d",
-				countPatchComments(t, database))
-		}
+		assert.Equal(t, 2, countPatchComments(t, database))
 	})
 
 	t.Run("no matching parent", func(t *testing.T) {
@@ -114,9 +102,7 @@ func TestCommentCorrelationFull(t *testing.T) {
 			withSubject("Re: unrelated"),
 			withInReplyTo("<nonexistent@test>"),
 			withListID("test.example.com"))
-		if countPatchComments(t, database) != before {
-			t.Error("orphan comment should not create a patch comment")
-		}
+		assert.Equal(t, before, countPatchComments(t, database), "orphan comment should not create a patch comment")
 	})
 }
 
@@ -145,9 +131,7 @@ func TestCommentOnCorrectParent(t *testing.T) {
 		JOIN patch p ON p.id = c.patch_id
 		LIMIT 1
 	`).Scan(context.Background(), &parentMsgID)
-	if parentMsgID != patch2 {
-		t.Errorf("comment parent = %q, want %q", parentMsgID, patch2)
-	}
+	assert.Equal(t, patch2, parentMsgID)
 }
 
 func TestCommentActionRequired(t *testing.T) {
@@ -175,9 +159,7 @@ func TestCommentActionRequired(t *testing.T) {
 		withListID("test.example.com"),
 		withHeader("X-Patchwork-Action-Required", ""))
 
-	if countPatchComments(t, database) != 2 {
-		t.Fatalf("expected 2 comments, got %d", countPatchComments(t, database))
-	}
+	require.Equal(t, 2, countPatchComments(t, database))
 
 	var addressedA, addressedB *bool
 	database.NewSelect().TableExpr("patch_comment").
@@ -187,13 +169,9 @@ func TestCommentActionRequired(t *testing.T) {
 		Column("addressed").Where("msgid = ?", commentB).
 		Scan(context.Background(), &addressedB)
 
-	if addressedA != nil {
-		t.Errorf("comment A addressed should be NULL, got %v", *addressedA)
-	}
-	if addressedB == nil || *addressedB != false {
-		t.Errorf("comment B addressed should be false, got valid=%v val=%v",
-			addressedB != nil, *addressedB)
-	}
+	assert.Nil(t, addressedA, "comment A addressed should be NULL")
+	require.NotNil(t, addressedB)
+	assert.False(t, *addressedB)
 }
 
 func TestCoverCommentActionRequired(t *testing.T) {
@@ -217,10 +195,8 @@ func TestCoverCommentActionRequired(t *testing.T) {
 	database.NewSelect().TableExpr("cover_comment").
 		Column("addressed").Where("msgid = ?", commentMsgID).
 		Scan(context.Background(), &addressed)
-	if addressed == nil || *addressed != false {
-		t.Errorf("cover comment addressed should be false, got valid=%v val=%v",
-			addressed != nil, *addressed)
-	}
+	require.NotNil(t, addressed)
+	assert.False(t, *addressed)
 }
 
 func TestCoverCommentActionRequiredFull(t *testing.T) {
@@ -255,13 +231,9 @@ func TestCoverCommentActionRequiredFull(t *testing.T) {
 		Column("addressed").Where("msgid = ?", commentB).
 		Scan(context.Background(), &addrB)
 
-	if addrA != nil {
-		t.Errorf("comment A addressed should be NULL, got %v", *addrA)
-	}
-	if addrB == nil || *addrB != false {
-		t.Errorf("comment B addressed should be false, got valid=%v val=%v",
-			addrB != nil, *addrB)
-	}
+	assert.Nil(t, addrA, "comment A addressed should be NULL")
+	require.NotNil(t, addrB)
+	assert.False(t, *addrB)
 }
 
 func TestCoverCommentIndirectReply(t *testing.T) {
@@ -288,9 +260,7 @@ func TestCoverCommentIndirectReply(t *testing.T) {
 	var count int
 	database.NewSelect().TableExpr("cover_comment").
 		ColumnExpr("count(*)").Scan(context.Background(), &count)
-	if count < 2 {
-		t.Errorf("indirect cover comment reply: got %d comments, want >= 2", count)
-	}
+	assert.GreaterOrEqual(t, count, 2, "indirect cover comment reply")
 }
 
 func TestMultipleProjectComment(t *testing.T) {
@@ -309,7 +279,5 @@ func TestMultipleProjectComment(t *testing.T) {
 		withInReplyTo(patchMsgID),
 		withListID("project-a.example.com"))
 
-	if countPatchComments(t, database) != 1 {
-		t.Errorf("expected 1 patch comment, got %d", countPatchComments(t, database))
-	}
+	assert.Equal(t, 1, countPatchComments(t, database))
 }

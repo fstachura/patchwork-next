@@ -10,6 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/getpatchwork/patchwork/pkg/db"
 )
 
@@ -48,51 +51,33 @@ func TestHashDiff(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := HashDiff(tt.diff)
-			if got != tt.want {
-				t.Errorf("HashDiff() = %q, want %q", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
 
 func TestHashDiffFromFile(t *testing.T) {
 	data, err := os.ReadFile("testdata/patches/0001-add-line.patch")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	hash := HashDiff(string(data))
-	if hash == "" {
-		t.Error("HashDiff returned empty string for patch file")
-	}
+	assert.NotEmpty(t, hash, "HashDiff returned empty string for patch file")
 }
 
 func TestParsePatch(t *testing.T) {
 	t.Run("inline patch", func(t *testing.T) {
 		patchData, err := os.ReadFile("testdata/patches/0001-add-line.patch")
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		content := "Test for attached patch\n" + string(patchData)
 		diff, comment := ParsePatch(content)
-		if diff == "" {
-			t.Fatal("expected diff, got empty")
-		}
-		if !strings.Contains(comment, "Test for attached patch") {
-			t.Errorf("comment should contain original text, got %q", comment)
-		}
-		if !strings.HasPrefix(diff, "diff --git") {
-			t.Errorf("diff should start with 'diff --git', got %q", diff[:40])
-		}
+		require.NotEmpty(t, diff, "expected diff")
+		assert.Contains(t, comment, "Test for attached patch")
+		assert.True(t, strings.HasPrefix(diff, "diff --git"), "diff should start with 'diff --git'")
 	})
 
 	t.Run("no diff", func(t *testing.T) {
 		diff, comment := ParsePatch("just a plain message\nno diff here\n")
-		if diff != "" {
-			t.Errorf("expected no diff, got %q", diff)
-		}
-		if !strings.Contains(comment, "just a plain message") {
-			t.Errorf("comment mismatch: %q", comment)
-		}
+		assert.Empty(t, diff)
+		assert.Contains(t, comment, "just a plain message")
 	})
 }
 
@@ -111,12 +96,8 @@ func TestFindFilenames(t *testing.T) {
 		"+new\n"
 
 	filenames := FindFilenames(diff)
-	if len(filenames) != 2 {
-		t.Fatalf("expected 2 filenames, got %d: %v", len(filenames), filenames)
-	}
-	if filenames[0] != "include/bar.h" || filenames[1] != "lib/foo.c" {
-		t.Errorf("filenames = %v, want [include/bar.h lib/foo.c]", filenames)
-	}
+	require.Len(t, filenames, 2)
+	assert.Equal(t, []string{"include/bar.h", "lib/foo.c"}, filenames)
 }
 
 func TestFindDelegateByFilename(t *testing.T) {
@@ -127,29 +108,22 @@ func TestFindDelegateByFilename(t *testing.T) {
 
 	t.Run("all match same delegate", func(t *testing.T) {
 		got := FindDelegateByFilename(rules, []string{"drivers/foo.c", "drivers/bar.c"})
-		if got == nil || *got != 1 {
-			t.Errorf("expected delegate 1, got %v", got)
-		}
+		require.NotNil(t, got)
+		assert.Equal(t, 1, *got)
 	})
 
 	t.Run("mixed delegates", func(t *testing.T) {
 		got := FindDelegateByFilename(rules, []string{"drivers/foo.c", "arch/x86.c"})
-		if got != nil {
-			t.Errorf("expected no delegate for mixed, got %d", *got)
-		}
+		assert.Nil(t, got, "expected no delegate for mixed")
 	})
 
 	t.Run("no match", func(t *testing.T) {
 		got := FindDelegateByFilename(rules, []string{"lib/util.c"})
-		if got != nil {
-			t.Errorf("expected no delegate for unmatched, got %d", *got)
-		}
+		assert.Nil(t, got, "expected no delegate for unmatched")
 	})
 
 	t.Run("empty filenames", func(t *testing.T) {
 		got := FindDelegateByFilename(rules, nil)
-		if got != nil {
-			t.Error("expected no delegate for empty filenames")
-		}
+		assert.Nil(t, got, "expected no delegate for empty filenames")
 	})
 }

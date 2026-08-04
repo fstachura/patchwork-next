@@ -8,22 +8,21 @@ package api
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSeriesCreate405(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "POST", "/api/1.4/series", "", map[string]string{"name": "x"})
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestSeriesDelete405(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "DELETE", "/api/1.4/series/1", "", nil)
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestSeriesDependencies(t *testing.T) {
@@ -37,22 +36,14 @@ func TestSeriesDependencies(t *testing.T) {
 
 	sr := getOne(t, s, fmt.Sprintf("/api/1.4/series/%d", s2))
 	deps, ok := sr["dependencies"].([]any)
-	if !ok {
-		t.Fatal("dependencies should be an array")
-	}
-	if len(deps) != 1 {
-		t.Errorf("dependencies: got %d, want 1", len(deps))
-	}
+	require.True(t, ok, "dependencies should be an array")
+	assert.Len(t, deps, 1)
 
 	// check dependents on the base series
 	base := getOne(t, s, fmt.Sprintf("/api/1.4/series/%d", s1))
 	dependents, ok := base["dependents"].([]any)
-	if !ok {
-		t.Fatal("dependents should be an array")
-	}
-	if len(dependents) != 1 {
-		t.Errorf("dependents: got %d, want 1", len(dependents))
-	}
+	require.True(t, ok, "dependents should be an array")
+	assert.Len(t, dependents, 1)
 }
 
 func TestSeriesDetail(t *testing.T) {
@@ -61,9 +52,7 @@ func TestSeriesDetail(t *testing.T) {
 	personID := s.insertPerson(t, "sd@test", "SD")
 	seriesID := s.insertSeries(t, projID, personID, "detail series")
 	sr := getOne(t, s, fmt.Sprintf("/api/1.4/series/%d", seriesID))
-	if sr["name"] != "detail series" {
-		t.Errorf("name = %v", sr["name"])
-	}
+	assert.Equal(t, "detail series", sr["name"])
 	assertField(t, sr, "version")
 	assertField(t, sr, "total")
 	assertNested(t, sr, "submitter", "id")
@@ -73,9 +62,7 @@ func TestSeriesDetail(t *testing.T) {
 func TestSeriesDetailInvalid(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/series/invalid")
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestSeriesEmptyMetadata(t *testing.T) {
@@ -86,12 +73,8 @@ func TestSeriesEmptyMetadata(t *testing.T) {
 
 	sr := getOne(t, s, fmt.Sprintf("/api/1.4/series/%d", seriesID))
 	meta, ok := sr["metadata"].(map[string]any)
-	if !ok {
-		t.Fatal("metadata should be an object even when empty")
-	}
-	if len(meta) != 0 {
-		t.Errorf("metadata should be empty, got %d entries", len(meta))
-	}
+	require.True(t, ok, "metadata should be an object even when empty")
+	assert.Len(t, meta, 0)
 }
 
 func TestSeriesFilterMetadata(t *testing.T) {
@@ -103,17 +86,11 @@ func TestSeriesFilterMetadata(t *testing.T) {
 		VALUES (?, 'github', 'owner/repo')`, seriesID)
 
 	items := getList(t, s, "/api/1.4/series/?metadata_key=github")
-	if len(items) != 1 {
-		t.Errorf("filter by key: got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/series/?metadata_value=owner/repo")
-	if len(items) != 1 {
-		t.Errorf("filter by value: got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/series/?metadata_key=nonexistent")
-	if len(items) != 0 {
-		t.Errorf("wrong key: got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestSeriesFilterProject(t *testing.T) {
@@ -123,13 +100,9 @@ func TestSeriesFilterProject(t *testing.T) {
 	s.insertSeries(t, projID, personID, "filtered")
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/series/?project=%d", projID))
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/series/?project=99999")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestSeriesFilterSubmitter(t *testing.T) {
@@ -139,13 +112,9 @@ func TestSeriesFilterSubmitter(t *testing.T) {
 	s.insertSeries(t, projID, personID, "s")
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/series/?submitter=%d", personID))
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/series/?submitter=99999")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestSeriesList(t *testing.T) {
@@ -154,9 +123,7 @@ func TestSeriesList(t *testing.T) {
 	personID := s.insertPerson(t, "s@test", "Submitter")
 	seriesID := s.insertSeries(t, projID, personID, "test series")
 	items := getList(t, s, "/api/1.4/series")
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 	sr := items[0]
 	assertValue(t, sr, "id", float64(seriesID))
 	assertValue(t, sr, "name", "test series")
@@ -178,9 +145,7 @@ func TestSeriesList(t *testing.T) {
 func TestSeriesListEmpty(t *testing.T) {
 	s := newTestServer(t)
 	items := getList(t, s, "/api/1.4/series")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestSeriesMetadata(t *testing.T) {
@@ -198,23 +163,15 @@ func TestSeriesMetadata(t *testing.T) {
 	assertField(t, sr, "metadata")
 
 	meta, ok := sr["metadata"].(map[string]any)
-	if !ok {
-		t.Fatal("metadata should be an object")
-	}
-	if meta["github"] != "owner/repo#42" {
-		t.Errorf("metadata.github = %v, want owner/repo#42", meta["github"])
-	}
-	if meta["ci"] != "passed" {
-		t.Errorf("metadata.ci = %v, want passed", meta["ci"])
-	}
+	require.True(t, ok, "metadata should be an object")
+	assert.Equal(t, "owner/repo#42", meta["github"])
+	assert.Equal(t, "passed", meta["ci"])
 }
 
 func TestSeriesNotFound(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/series/99999")
-	if resp.StatusCode != 404 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestSeriesReceivedTotal(t *testing.T) {
@@ -227,12 +184,8 @@ func TestSeriesReceivedTotal(t *testing.T) {
 		seriesID, patchID)
 
 	sr := getOne(t, s, fmt.Sprintf("/api/1.4/series/%d", seriesID))
-	if sr["received_total"] != float64(1) {
-		t.Errorf("received_total = %v, want 1", sr["received_total"])
-	}
-	if sr["received_all"] != false {
-		t.Errorf("received_all = %v, want false", sr["received_all"])
-	}
+	assert.Equal(t, float64(1), sr["received_total"])
+	assert.Equal(t, false, sr["received_all"])
 }
 
 func TestSeriesUpdateMetadata(t *testing.T) {
@@ -247,16 +200,10 @@ func TestSeriesUpdateMetadata(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/series/%d", seriesID), token,
 		map[string]any{"metadata": map[string]string{"key": "value"}})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var sr map[string]any
 	decodeJSON(t, resp, &sr)
 	meta, ok := sr["metadata"].(map[string]any)
-	if !ok {
-		t.Fatal("metadata not an object")
-	}
-	if meta["key"] != "value" {
-		t.Errorf("metadata.key = %v", meta["key"])
-	}
+	require.True(t, ok, "metadata not an object")
+	assert.Equal(t, "value", meta["key"])
 }

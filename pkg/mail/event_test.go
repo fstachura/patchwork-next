@@ -16,6 +16,9 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEventCreation(t *testing.T) {
@@ -52,27 +55,13 @@ func TestEventCreation(t *testing.T) {
 
 	bus.Shutdown()
 
-	if n := countEvents(t, database, bus, "patch-created"); n != 2 {
-		t.Errorf("patch-created events = %d, want 2", n)
-	}
-	if n := countEvents(t, database, bus, "series-created"); n != 1 {
-		t.Errorf("series-created events = %d, want 1", n)
-	}
-	if n := countEvents(t, database, bus, "series-completed"); n != 1 {
-		t.Errorf("series-completed events = %d, want 1", n)
-	}
-	if n := countEvents(t, database, bus, "patch-completed"); n != 2 {
-		t.Errorf("patch-completed events = %d, want 2", n)
-	}
-	if n := countEvents(t, database, bus, "cover-created"); n != 1 {
-		t.Errorf("cover-created events = %d, want 1", n)
-	}
-	if n := countEvents(t, database, bus, "patch-comment-created"); n != 1 {
-		t.Errorf("patch-comment-created events = %d, want 1", n)
-	}
-	if n := countEvents(t, database, bus, "cover-comment-created"); n != 1 {
-		t.Errorf("cover-comment-created events = %d, want 1", n)
-	}
+	assert.Equal(t, 2, countEvents(t, database, bus, "patch-created"))
+	assert.Equal(t, 1, countEvents(t, database, bus, "series-created"))
+	assert.Equal(t, 1, countEvents(t, database, bus, "series-completed"))
+	assert.Equal(t, 2, countEvents(t, database, bus, "patch-completed"))
+	assert.Equal(t, 1, countEvents(t, database, bus, "cover-created"))
+	assert.Equal(t, 1, countEvents(t, database, bus, "patch-comment-created"))
+	assert.Equal(t, 1, countEvents(t, database, bus, "cover-comment-created"))
 }
 
 func TestEventPatchCompletedOrder(t *testing.T) {
@@ -97,12 +86,8 @@ func TestEventPatchCompletedOrder(t *testing.T) {
 
 	bus.Shutdown()
 
-	if n := countEvents(t, database, bus, "patch-completed"); n != 3 {
-		t.Errorf("patch-completed events = %d, want 3", n)
-	}
-	if n := countEvents(t, database, bus, "series-completed"); n != 1 {
-		t.Errorf("series-completed events = %d, want 1", n)
-	}
+	assert.Equal(t, 3, countEvents(t, database, bus, "patch-completed"))
+	assert.Equal(t, 1, countEvents(t, database, bus, "series-completed"))
 }
 
 func TestWebhookDelivery(t *testing.T) {
@@ -149,9 +134,7 @@ func TestWebhookDelivery(t *testing.T) {
 			datetime('now')
 		)
 	`, srv.URL).Exec(bgCtx)
-	if err != nil {
-		t.Fatalf("insert webhook: %v", err)
-	}
+	require.NoError(t, err, "insert webhook")
 
 	parseEmail(t, ctx, database, sampleDiff,
 		withSubject("[PATCH 1/1] webhook test"),
@@ -163,9 +146,7 @@ func TestWebhookDelivery(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if len(received) == 0 {
-		t.Fatal("expected at least 1 webhook delivery")
-	}
+	require.NotEmpty(t, received, "expected at least 1 webhook delivery")
 
 	var found *webhookRequest
 	for i := range received {
@@ -174,41 +155,23 @@ func TestWebhookDelivery(t *testing.T) {
 			break
 		}
 	}
-	if found == nil {
-		t.Fatal("no patch-created webhook received")
-	}
+	require.NotNil(t, found, "no patch-created webhook received")
 
-	if found.delivery == "" {
-		t.Error("X-Patchwork-Delivery header missing")
-	}
+	assert.NotEmpty(t, found.delivery, "X-Patchwork-Delivery header missing")
 
 	mac := hmac.New(sha256.New, []byte("test-secret"))
 	mac.Write(found.body)
 	expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
-	if found.signature != expected {
-		t.Errorf("signature = %q, want %q", found.signature, expected)
-	}
+	assert.Equal(t, expected, found.signature)
 
 	var payload map[string]any
-	if err := json.Unmarshal(found.body, &payload); err != nil {
-		t.Fatalf("invalid JSON payload: %v", err)
-	}
-	if payload["category"] != "patch-created" {
-		t.Errorf("category = %v, want patch-created", payload["category"])
-	}
-	if payload["project"] == nil {
-		t.Error("project field missing from payload")
-	}
-	if payload["payload"] == nil {
-		t.Error("payload field missing from payload")
-	}
+	require.NoError(t, json.Unmarshal(found.body, &payload), "invalid JSON payload")
+	assert.Equal(t, "patch-created", payload["category"])
+	assert.NotNil(t, payload["project"], "project field missing from payload")
+	assert.NotNil(t, payload["payload"], "payload field missing from payload")
 	inner, ok := payload["payload"].(map[string]any)
-	if !ok {
-		t.Fatal("payload.payload is not an object")
-	}
-	if inner["patch"] == nil {
-		t.Error("payload.payload.patch missing")
-	}
+	require.True(t, ok, "payload.payload is not an object")
+	assert.NotNil(t, inner["patch"], "payload.payload.patch missing")
 }
 
 type webhookRequest struct {

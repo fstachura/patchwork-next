@@ -10,6 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBundleList(t *testing.T) {
@@ -20,9 +23,7 @@ func TestBundleList(t *testing.T) {
 		VALUES (?, ?, 'my bundle', true)`, userID, projID)
 
 	items := getList(t, s, "/api/1.4/bundles")
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 	b := items[0]
 	assertField(t, b, "id")
 	assertField(t, b, "name")
@@ -34,9 +35,7 @@ func TestBundleList(t *testing.T) {
 func TestBundleListEmpty(t *testing.T) {
 	s := newTestServer(t)
 	items := getList(t, s, "/api/1.4/bundles")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestBundleListPublicOnly(t *testing.T) {
@@ -49,12 +48,8 @@ func TestBundleListPublicOnly(t *testing.T) {
 		VALUES (?, ?, 'private', false)`, userID, projID)
 
 	items := getList(t, s, "/api/1.4/bundles")
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
-	if items[0]["name"] != "public" {
-		t.Errorf("name = %v, want public", items[0]["name"])
-	}
+	assert.Len(t, items, 1)
+	assert.Equal(t, "public", items[0]["name"])
 }
 
 func TestBundleListAuthSeesOwnPrivate(t *testing.T) {
@@ -72,16 +67,12 @@ func TestBundleListAuthSeesOwnPrivate(t *testing.T) {
 		VALUES (?, ?, 'public-one', true)`, otherID, projID)
 
 	resp := s.authRequest(t, "GET", "/api/1.4/bundles", token, nil)
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var items []map[string]any
 	json.NewDecoder(resp.Body).Decode(&items)
 	resp.Body.Close()
 
-	if len(items) != 2 {
-		t.Fatalf("got %d, want 2 (own private + public)", len(items))
-	}
+	require.Len(t, items, 2)
 }
 
 func TestBundleDetail(t *testing.T) {
@@ -94,17 +85,13 @@ func TestBundleDetail(t *testing.T) {
 		userID, projID).Scan(context.Background(), &bundleID)
 
 	b := getOne(t, s, fmt.Sprintf("/api/1.4/bundles/%d", bundleID))
-	if b["name"] != "detail bundle" {
-		t.Errorf("name = %v", b["name"])
-	}
+	assert.Equal(t, "detail bundle", b["name"])
 }
 
 func TestBundleDetailInvalid(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/bundles/invalid")
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 422", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestBundleDetailPatches(t *testing.T) {
@@ -128,24 +115,16 @@ func TestBundleDetailPatches(t *testing.T) {
 	assertNested(t, b, "project", "id")
 
 	patches := b["patches"].([]any)
-	if len(patches) != 1 {
-		t.Fatalf("patches: got %d, want 1", len(patches))
-	}
+	require.Len(t, patches, 1)
 	patchObj := patches[0].(map[string]any)
-	if int(patchObj["id"].(float64)) != int(patchID) {
-		t.Errorf("patches[0].id = %v, want %d", patchObj["id"], patchID)
-	}
-	if patchObj["name"] != "bundle patch" {
-		t.Errorf("patches[0].name = %v, want 'bundle patch'", patchObj["name"])
-	}
+	assert.Equal(t, float64(patchID), patchObj["id"])
+	assert.Equal(t, "bundle patch", patchObj["name"])
 }
 
 func TestBundleNotFound(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/bundles/99999")
-	if resp.StatusCode != 404 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestBundleFilterOwner(t *testing.T) {
@@ -156,13 +135,9 @@ func TestBundleFilterOwner(t *testing.T) {
 		VALUES (?, ?, 'b', true)`, userID, projID)
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/bundles/?owner=%d", userID))
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/bundles/?owner=99999")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestBundleFilterProject(t *testing.T) {
@@ -173,13 +148,9 @@ func TestBundleFilterProject(t *testing.T) {
 		VALUES (?, ?, 'b', true)`, userID, projID)
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/bundles/?project=%d", projID))
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/bundles/?project=99999")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 // --- Create ---
@@ -191,9 +162,7 @@ func TestBundleCreateAnonymous(t *testing.T) {
 
 	resp := s.authRequest(t, "POST", "/api/1.4/bundles", "",
 		map[string]any{"name": "b", "patches": []int{patchID}})
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }
 
 func TestBundleCreateValid(t *testing.T) {
@@ -210,9 +179,7 @@ func TestBundleCreateValid(t *testing.T) {
 			"public":  true,
 			"patches": []int{p1, p2},
 		})
-	if resp.StatusCode != 201 {
-		t.Fatalf("status = %d, want 201", resp.StatusCode)
-	}
+	require.Equal(t, 201, resp.StatusCode)
 
 	var b map[string]any
 	json.NewDecoder(resp.Body).Decode(&b)
@@ -224,9 +191,7 @@ func TestBundleCreateValid(t *testing.T) {
 	assertNested(t, b, "project", "id")
 
 	patches := b["patches"].([]any)
-	if len(patches) != 2 {
-		t.Fatalf("patches: got %d, want 2", len(patches))
-	}
+	require.Len(t, patches, 2)
 }
 
 func TestBundleCreateEmptyPatches(t *testing.T) {
@@ -240,9 +205,7 @@ func TestBundleCreateEmptyPatches(t *testing.T) {
 			"name":    "empty-bundle",
 			"patches": []int{},
 		})
-	if resp.StatusCode != 400 {
-		t.Errorf("status = %d, want 400", resp.StatusCode)
-	}
+	assert.Equal(t, 400, resp.StatusCode)
 }
 
 func TestBundleCreateCrossProject(t *testing.T) {
@@ -268,9 +231,7 @@ func TestBundleCreateCrossProject(t *testing.T) {
 			"name":    "cross-bundle",
 			"patches": []int{p1, p2},
 		})
-	if resp.StatusCode != 400 {
-		t.Errorf("status = %d, want 400", resp.StatusCode)
-	}
+	assert.Equal(t, 400, resp.StatusCode)
 }
 
 // --- Update ---
@@ -289,9 +250,7 @@ func TestBundleUpdateOwner(t *testing.T) {
 			"public":  false,
 			"patches": []int{patchID},
 		})
-	if resp.StatusCode != 201 {
-		t.Fatalf("create status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 201, resp.StatusCode)
 	var created map[string]any
 	json.NewDecoder(resp.Body).Decode(&created)
 	resp.Body.Close()
@@ -303,9 +262,7 @@ func TestBundleUpdateOwner(t *testing.T) {
 			"name":   "new-name",
 			"public": true,
 		})
-	if resp.StatusCode != 200 {
-		t.Fatalf("update status = %d, want 200", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var updated map[string]any
 	json.NewDecoder(resp.Body).Decode(&updated)
 	resp.Body.Close()
@@ -338,17 +295,13 @@ func TestBundleUpdatePatches(t *testing.T) {
 		map[string]any{
 			"patches": []int{p2, p3},
 		})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var updated map[string]any
 	json.NewDecoder(resp.Body).Decode(&updated)
 	resp.Body.Close()
 
 	patches := updated["patches"].([]any)
-	if len(patches) != 2 {
-		t.Fatalf("patches: got %d, want 2", len(patches))
-	}
+	require.Len(t, patches, 2)
 }
 
 func TestBundleUpdateNonOwner(t *testing.T) {
@@ -368,9 +321,7 @@ func TestBundleUpdateNonOwner(t *testing.T) {
 
 	resp := s.authRequest(t, "PATCH", fmt.Sprintf("/api/1.4/bundles/%d", bundleID), otherToken,
 		map[string]any{"name": "hijacked"})
-	if resp.StatusCode != 403 {
-		t.Errorf("status = %d, want 403", resp.StatusCode)
-	}
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 // --- Delete ---
@@ -393,15 +344,11 @@ func TestBundleDeleteOwner(t *testing.T) {
 	bundleID := int(created["id"].(float64))
 
 	resp = s.authRequest(t, "DELETE", fmt.Sprintf("/api/1.4/bundles/%d", bundleID), token, nil)
-	if resp.StatusCode != 204 {
-		t.Errorf("status = %d, want 204", resp.StatusCode)
-	}
+	assert.Equal(t, 204, resp.StatusCode)
 
 	// verify it's gone
 	resp = s.get(t, fmt.Sprintf("/api/1.4/bundles/%d", bundleID))
-	if resp.StatusCode != 404 {
-		t.Errorf("after delete: status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestBundleDeleteNonOwner(t *testing.T) {
@@ -417,15 +364,11 @@ func TestBundleDeleteNonOwner(t *testing.T) {
 		ownerID, projID).Scan(context.Background(), &bundleID)
 
 	resp := s.authRequest(t, "DELETE", fmt.Sprintf("/api/1.4/bundles/%d", bundleID), otherToken, nil)
-	if resp.StatusCode != 403 {
-		t.Errorf("status = %d, want 403", resp.StatusCode)
-	}
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 func TestBundleDeleteAnonymous(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "DELETE", "/api/1.4/bundles/1", "", nil)
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }

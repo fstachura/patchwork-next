@@ -14,9 +14,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
 
 	"github.com/getpatchwork/patchwork/pkg/config"
@@ -64,21 +65,16 @@ func newTestServer(t *testing.T) *testServer {
 
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	src, err := os.ReadFile(templateDB)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(dbPath, src, 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	err = os.WriteFile(dbPath, src, 0o644)
+	require.NoError(t, err)
 
 	cfg := &config.Config{}
 	cfg.Database.URL = "sqlite://" + dbPath
 	cfg.Http.ApiPageSize = 30
 	cfg.Http.ApiPageMax = 250
 	database, err := db.Open(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() { database.Close() })
 
 	bus := events.Start(context.Background(), database)
@@ -94,9 +90,7 @@ func newTestServer(t *testing.T) *testServer {
 func (s *testServer) exec(t *testing.T, query string, args ...any) {
 	t.Helper()
 	_, err := s.db.NewRaw(query, args...).Exec(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func (s *testServer) insertUser(t *testing.T, username, email string) int {
@@ -202,26 +196,21 @@ func (s *testServer) insertComment(t *testing.T, patchID int, msgid string) int 
 func (s *testServer) get(t *testing.T, path string) *http.Response {
 	t.Helper()
 	resp, err := http.Get(s.URL + path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return resp
 }
 
 func decodeJSON(t *testing.T, resp *http.Response, v any) {
 	t.Helper()
 	defer resp.Body.Close()
-	if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
-		t.Fatalf("decode JSON: %v", err)
-	}
+	err := json.NewDecoder(resp.Body).Decode(v)
+	require.NoError(t, err, "decode JSON")
 }
 
 func getList(t *testing.T, s *testServer, path string) []map[string]any {
 	t.Helper()
 	resp := s.get(t, path)
-	if resp.StatusCode != 200 {
-		t.Fatalf("%s: status = %d, want 200", path, resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var items []map[string]any
 	decodeJSON(t, resp, &items)
 	return items
@@ -230,9 +219,7 @@ func getList(t *testing.T, s *testServer, path string) []map[string]any {
 func getOne(t *testing.T, s *testServer, path string) map[string]any {
 	t.Helper()
 	resp := s.get(t, path)
-	if resp.StatusCode != 200 {
-		t.Fatalf("%s: status = %d, want 200", path, resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var item map[string]any
 	decodeJSON(t, resp, &item)
 	return item
@@ -240,55 +227,29 @@ func getOne(t *testing.T, s *testServer, path string) map[string]any {
 
 func assertField(t *testing.T, obj map[string]any, key string) {
 	t.Helper()
-	if _, ok := obj[key]; !ok {
-		t.Errorf("missing field %q", key)
-	}
+	assert.Contains(t, obj, key)
 }
 
 func assertValue(t *testing.T, obj map[string]any, key string, want any) {
 	t.Helper()
-	got, ok := obj[key]
-	if !ok {
-		t.Errorf("missing field %q", key)
-		return
-	}
-	if got != want {
-		t.Errorf("%s = %v (%T), want %v (%T)", key, got, got, want, want)
-	}
+	require.Contains(t, obj, key)
+	assert.Equal(t, want, obj[key])
 }
 
 func assertContains(t *testing.T, obj map[string]any, key, substr string) {
 	t.Helper()
-	v, ok := obj[key]
-	if !ok {
-		t.Errorf("missing field %q", key)
-		return
-	}
-	s, ok := v.(string)
-	if !ok {
-		t.Errorf("field %q is not a string: %v", key, v)
-		return
-	}
-	if !strings.Contains(s, substr) {
-		t.Errorf("%s = %q, want to contain %q", key, s, substr)
-	}
+	require.Contains(t, obj, key)
+	s, ok := obj[key].(string)
+	require.True(t, ok, "field %q is not a string: %v", key, obj[key])
+	assert.Contains(t, s, substr)
 }
 
 func assertNested(t *testing.T, obj map[string]any, key, nestedKey string) {
 	t.Helper()
-	v, ok := obj[key]
-	if !ok {
-		t.Errorf("missing field %q", key)
-		return
-	}
-	nested, ok := v.(map[string]any)
-	if !ok {
-		t.Errorf("field %q is not an object", key)
-		return
-	}
-	if _, ok := nested[nestedKey]; !ok {
-		t.Errorf("missing nested field %q.%q", key, nestedKey)
-	}
+	require.Contains(t, obj, key)
+	nested, ok := obj[key].(map[string]any)
+	require.True(t, ok, "field %q is not an object", key)
+	assert.Contains(t, nested, nestedKey)
 }
 
 func (s *testServer) insertToken(t *testing.T, userID int) string {
@@ -319,16 +280,12 @@ func (s *testServer) authRequest(t *testing.T, method, path, token string, body 
 		reqBody = bytes.NewBuffer(nil)
 	}
 	req, err := http.NewRequest(method, s.URL+path, reqBody)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		req.Header.Set("Authorization", "Token "+token)
 	}
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return resp
 }

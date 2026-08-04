@@ -5,7 +5,12 @@
 
 package mail
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 func TestCleanSubject(t *testing.T) {
 	tests := []struct {
@@ -34,12 +39,8 @@ func TestCleanSubject(t *testing.T) {
 
 	for _, tt := range tests {
 		name, prefixes := CleanSubject(tt.input, tt.drop)
-		if name != tt.wantName {
-			t.Errorf("CleanSubject(%q): name = %q, want %q", tt.input, name, tt.wantName)
-		}
-		if !slicesEqual(prefixes, tt.wantPfx) {
-			t.Errorf("CleanSubject(%q): prefixes = %v, want %v", tt.input, prefixes, tt.wantPfx)
-		}
+		assert.Equal(t, tt.wantName, name, "CleanSubject(%q) name", tt.input)
+		assert.Equal(t, tt.wantPfx, prefixes, "CleanSubject(%q) prefixes", tt.input)
 	}
 }
 
@@ -48,9 +49,7 @@ func TestIsComment(t *testing.T) {
 		"RE: meep", "Re: meep", "re: meep",
 		"RE meep", "Re meep", "re meep",
 	} {
-		if !IsComment(s) {
-			t.Errorf("IsComment(%q) = false, want true", s)
-		}
+		assert.True(t, IsComment(s), "IsComment(%q)", s)
 	}
 }
 
@@ -69,9 +68,7 @@ func TestSplitPrefixes(t *testing.T) {
 
 	for _, tt := range tests {
 		got := SplitPrefixes(tt.input)
-		if !slicesEqual(got, tt.want) {
-			t.Errorf("SplitPrefixes(%q) = %v, want %v", tt.input, got, tt.want)
-		}
+		assert.Equal(t, tt.want, got, "SplitPrefixes(%q)", tt.input)
 	}
 }
 
@@ -97,10 +94,8 @@ func TestParseSeriesMarker(t *testing.T) {
 
 	for _, tt := range tests {
 		x, n := ParseSeriesMarker(tt.input)
-		if x != tt.wantX || n != tt.wantN {
-			t.Errorf("ParseSeriesMarker(%v) = (%d, %d), want (%d, %d)",
-				tt.input, x, n, tt.wantX, tt.wantN)
-		}
+		assert.Equal(t, tt.wantX, x, "ParseSeriesMarker(%v) x", tt.input)
+		assert.Equal(t, tt.wantN, n, "ParseSeriesMarker(%v) n", tt.input)
 	}
 }
 
@@ -122,10 +117,7 @@ func TestParseVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		got := ParseVersion(tt.subject, tt.prefixes)
-		if got != tt.want {
-			t.Errorf("ParseVersion(%q, %v) = %d, want %d",
-				tt.subject, tt.prefixes, got, tt.want)
-		}
+		assert.Equal(t, tt.want, got, "ParseVersion(%q, %v)", tt.subject, tt.prefixes)
 	}
 }
 
@@ -142,13 +134,9 @@ for you to fetch changes up to def456:
 `
 	url := ParsePullRequest(content)
 	want := "git://git.kernel.org/pub/scm/linux/kernel/git/tip/linux-2.6-tip.git x86-fixes-for-linus"
-	if url != want {
-		t.Errorf("ParsePullRequest() = %q, want %q", url, want)
-	}
+	assert.Equal(t, want, url)
 
-	if url := ParsePullRequest("no pull request here"); url != "" {
-		t.Errorf("ParsePullRequest(no match) = %q, want empty", url)
-	}
+	assert.Empty(t, ParsePullRequest("no pull request here"))
 }
 
 func TestFindReferences(t *testing.T) {
@@ -161,9 +149,7 @@ func TestFindReferences(t *testing.T) {
 		})
 		refs := FindReferences(h)
 		want := []string{"<4574b99b-edac-d8dc-9141-79c3109d2fcc@huawei.com>"}
-		if !slicesEqual(refs, want) {
-			t.Errorf("FindReferences() = %v, want %v", refs, want)
-		}
+		assert.Equal(t, want, refs)
 	})
 
 	t.Run("duplicate references", func(t *testing.T) {
@@ -177,20 +163,14 @@ func TestFindReferences(t *testing.T) {
 		refs := FindReferences(h)
 		// In-Reply-To comes first, then References (which should
 		// not duplicate the In-Reply-To entry)
-		if len(refs) == 0 {
-			t.Fatal("expected references")
-		}
+		require.NotEmpty(t, refs, "expected references")
 		// first ref should be the In-Reply-To
-		if refs[0] != "<525534677.5312512.1368202896189.JavaMail.root@vmware.com>" {
-			t.Errorf("first ref = %q", refs[0])
-		}
+		assert.Equal(t, "<525534677.5312512.1368202896189.JavaMail.root@vmware.com>", refs[0])
 		// TODO: FindReferences should deduplicate refs that appear
 		// in both In-Reply-To and References headers. The Python
 		// version does this. For now, just check the expected
 		// refs are all present.
-		if len(refs) < 5 {
-			t.Errorf("expected at least 5 refs, got %d", len(refs))
-		}
+		assert.GreaterOrEqual(t, len(refs), 5)
 	})
 }
 
@@ -210,23 +190,6 @@ func TestCleanContent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		got := CleanContent(tt.input)
-		if got != tt.want {
-			t.Errorf("CleanContent(%q) = %q, want %q", tt.input, got, tt.want)
-		}
+		assert.Equal(t, tt.want, got, "CleanContent(%q)", tt.input)
 	}
-}
-
-func slicesEqual(a, b []string) bool {
-	if len(a) == 0 && len(b) == 0 {
-		return true
-	}
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

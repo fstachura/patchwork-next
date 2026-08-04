@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
 	_ "modernc.org/sqlite"
 
@@ -30,14 +32,10 @@ func TestSchemaDrift(t *testing.T) {
 	ctx := context.Background()
 
 	migratedDB := openMemoryDB(t)
-	if err := migrations.RunMigrations(ctx, migratedDB); err != nil {
-		t.Fatalf("RunMigrations: %v", err)
-	}
+	require.NoError(t, migrations.RunMigrations(ctx, migratedDB), "RunMigrations")
 
 	freshDB := openMemoryDB(t)
-	if err := db.CreateSchema(ctx, freshDB); err != nil {
-		t.Fatalf("CreateSchema: %v", err)
-	}
+	require.NoError(t, db.CreateSchema(ctx, freshDB), "CreateSchema")
 
 	migratedTables := dumpSchema(t, migratedDB)
 	freshTables := dumpSchema(t, freshDB)
@@ -60,28 +58,20 @@ func TestSchemaDrift(t *testing.T) {
 		m, mOK := migratedTables[name]
 		f, fOK := freshTables[name]
 
-		if !mOK {
-			t.Errorf("table %q exists in CreateSchema but not in migrations", name)
+		if !assert.True(t, mOK, "table %q exists in CreateSchema but not in migrations", name) {
 			continue
 		}
-		if !fOK {
-			t.Errorf("table %q exists in migrations but not in CreateSchema", name)
+		if !assert.True(t, fOK, "table %q exists in migrations but not in CreateSchema", name) {
 			continue
 		}
-		if m != f {
-			t.Errorf("table %q schema mismatch:\n  migrations: %s\n  models:     %s",
-				name, m, f)
-		}
+		assert.Equal(t, m, f, "table %q schema mismatch", name)
 	}
 
 	// Compare indexes
 	migratedIdx := dumpIndexes(t, migratedDB)
 	freshIdx := dumpIndexes(t, freshDB)
 
-	if len(migratedIdx) != len(freshIdx) {
-		t.Errorf("index count mismatch: migrations=%d, models=%d",
-			len(migratedIdx), len(freshIdx))
-	}
+	assert.Equal(t, len(migratedIdx), len(freshIdx), "index count mismatch")
 
 	allIdx := make(map[string]bool)
 	for name := range migratedIdx {
@@ -95,18 +85,13 @@ func TestSchemaDrift(t *testing.T) {
 		m, mOK := migratedIdx[name]
 		f, fOK := freshIdx[name]
 
-		if !mOK {
-			t.Errorf("index %q exists in CreateSchema but not in migrations", name)
+		if !assert.True(t, mOK, "index %q exists in CreateSchema but not in migrations", name) {
 			continue
 		}
-		if !fOK {
-			t.Errorf("index %q exists in migrations but not in CreateSchema", name)
+		if !assert.True(t, fOK, "index %q exists in migrations but not in CreateSchema", name) {
 			continue
 		}
-		if m != f {
-			t.Errorf("index %q mismatch:\n  migrations: %s\n  models:     %s",
-				name, m, f)
-		}
+		assert.Equal(t, m, f, "index %q mismatch", name)
 	}
 }
 
@@ -116,9 +101,7 @@ func openMemoryDB(t *testing.T) *bun.DB {
 	var cfg config.Config
 	cfg.Database.URL = "sqlite://:memory:"
 	database, err := db.Open(&cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Cleanup(func() { database.Close() })
 	return database
 }
@@ -127,17 +110,13 @@ func dumpSchema(t *testing.T, database *bun.DB) map[string]string {
 	t.Helper()
 	rows, err := database.QueryContext(context.Background(),
 		`SELECT name, sql FROM sqlite_master WHERE type='table' AND sql IS NOT NULL ORDER BY name`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer rows.Close()
 
 	tables := make(map[string]string)
 	for rows.Next() {
 		var name, ddl string
-		if err := rows.Scan(&name, &ddl); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, rows.Scan(&name, &ddl))
 		tables[name] = normalizeDDL(ddl)
 	}
 	return tables
@@ -147,17 +126,13 @@ func dumpIndexes(t *testing.T, database *bun.DB) map[string]string {
 	t.Helper()
 	rows, err := database.QueryContext(context.Background(),
 		`SELECT name, sql FROM sqlite_master WHERE type='index' AND sql IS NOT NULL ORDER BY name`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer rows.Close()
 
 	indexes := make(map[string]string)
 	for rows.Next() {
 		var name, ddl string
-		if err := rows.Scan(&name, &ddl); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, rows.Scan(&name, &ddl))
 		// Skip sqlite autoindex entries
 		if strings.HasPrefix(name, "sqlite_") {
 			continue

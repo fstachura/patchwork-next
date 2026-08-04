@@ -7,10 +7,12 @@ package mail
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var sampleDiff = "diff --git a/meep.text b/meep.text\n" +
@@ -33,9 +35,7 @@ func TestEncodingParse(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			database, ctx, _, _ := testDB(t, "patchwork.ozlabs.org")
 			result := parseMbox(t, ctx, database, name, "patchwork.ozlabs.org")
-			if result.patches != 1 {
-				t.Errorf("expected exactly 1 patch, got %d", result.patches)
-			}
+			assert.Equal(t, 1, result.patches)
 		})
 	}
 }
@@ -44,17 +44,11 @@ func TestDuplicateMail(t *testing.T) {
 	database, ctx, _, _ := testDB(t, "patchwork.ozlabs.org")
 
 	result := parseMbox(t, ctx, database, "mail/0013-with-utf8-body.mbox", "patchwork.ozlabs.org")
-	if result.patches != 1 {
-		t.Fatalf("first parse: expected 1 patch, got %d", result.patches)
-	}
+	require.Equal(t, 1, result.patches, "first parse")
 
 	result2 := parseMbox(t, ctx, database, "mail/0013-with-utf8-body.mbox", "patchwork.ozlabs.org")
-	if result2.patches != 1 {
-		t.Errorf("second parse: expected still 1 patch, got %d", result2.patches)
-	}
-	if result2.duplicates != 1 {
-		t.Errorf("expected 1 duplicate, got %d", result2.duplicates)
-	}
+	assert.Equal(t, 1, result2.patches, "second parse")
+	assert.Equal(t, 1, result2.duplicates)
 }
 
 func TestWeirdMail(t *testing.T) {
@@ -95,23 +89,15 @@ func TestDuplicatePatchAndComment(t *testing.T) {
 	err := parseEmail(t, ctx, database, sampleDiff,
 		withMsgID(patchMsgID),
 		withListID("test.example.com"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if countPatches(t, database) != 1 {
-		t.Fatal("expected 1 patch")
-	}
+	require.NoError(t, err)
+	require.Equal(t, 1, countPatches(t, database))
 
 	err = parseEmail(t, ctx, database, sampleDiff,
 		withMsgID(patchMsgID),
 		withListID("test.example.com"))
 	var dupErr *DuplicateMailError
-	if !errors.As(err, &dupErr) {
-		t.Errorf("expected DuplicateMailError, got %v", err)
-	}
-	if countPatches(t, database) != 1 {
-		t.Error("expected still 1 patch")
-	}
+	assert.ErrorAs(t, err, &dupErr)
+	assert.Equal(t, 1, countPatches(t, database), "expected still 1 patch")
 
 	commentMsgID := "<dup-comment@test>"
 	err = parseEmail(t, ctx, database, "nice patch\nAcked-by: Me <me@test>",
@@ -119,21 +105,15 @@ func TestDuplicatePatchAndComment(t *testing.T) {
 		withSubject("Re: test"),
 		withInReplyTo(patchMsgID),
 		withListID("test.example.com"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if countPatchComments(t, database) != 1 {
-		t.Fatal("expected 1 comment")
-	}
+	require.NoError(t, err)
+	require.Equal(t, 1, countPatchComments(t, database))
 
 	err = parseEmail(t, ctx, database, "nice patch\nAcked-by: Me <me@test>",
 		withMsgID(commentMsgID),
 		withSubject("Re: test"),
 		withInReplyTo(patchMsgID),
 		withListID("test.example.com"))
-	if !errors.As(err, &dupErr) {
-		t.Errorf("expected DuplicateMailError for comment, got %v", err)
-	}
+	assert.ErrorAs(t, err, &dupErr, "expected DuplicateMailError for comment")
 }
 
 func TestDuplicateCoverLetter(t *testing.T) {
@@ -151,9 +131,7 @@ func TestDuplicateCoverLetter(t *testing.T) {
 		withListID("test.example.com"))
 
 	var dupErr *DuplicateMailError
-	if !errors.As(err, &dupErr) {
-		t.Errorf("expected DuplicateMailError for cover, got %v", err)
-	}
+	assert.ErrorAs(t, err, &dupErr, "expected DuplicateMailError for cover")
 }
 
 func TestInitialPatchState(t *testing.T) {
@@ -162,9 +140,7 @@ func TestInitialPatchState(t *testing.T) {
 	t.Run("default state", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		var stateID int
 		database.NewSelect().TableExpr("patch").
 			Column("state_id").Limit(1).
@@ -173,18 +149,14 @@ func TestInitialPatchState(t *testing.T) {
 		database.NewSelect().TableExpr("state").
 			Column("ordering").Where("id = ?", stateID).
 			Scan(context.Background(), &ordering)
-		if ordering != 0 {
-			t.Errorf("expected default state (ordering=0), got ordering=%d", ordering)
-		}
+		assert.Equal(t, 0, ordering)
 	})
 
 	t.Run("explicit state", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withListID("test.example.com"),
 			withHeader("X-Patchwork-State", "Accepted"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		var stateName string
 		database.NewSelect().TableExpr("patch AS p").
@@ -192,9 +164,7 @@ func TestInitialPatchState(t *testing.T) {
 			Column("s.name").
 			OrderExpr("p.id DESC").Limit(1).
 			Scan(context.Background(), &stateName)
-		if stateName != "Accepted" {
-			t.Errorf("state = %q, want Accepted", stateName)
-		}
+		assert.Equal(t, "Accepted", stateName)
 	})
 }
 
@@ -208,9 +178,7 @@ func TestInitialPatchStateFull(t *testing.T) {
 			Join("JOIN state AS s ON s.id = p.state_id").
 			Column("s.name").OrderExpr("p.id DESC").Limit(1).
 			Scan(context.Background(), &stateName)
-		if stateName != "New" {
-			t.Errorf("default state = %q, want New", stateName)
-		}
+		assert.Equal(t, "New", stateName)
 	})
 
 	t.Run("explicit non-default state", func(t *testing.T) {
@@ -222,9 +190,7 @@ func TestInitialPatchStateFull(t *testing.T) {
 			Join("JOIN state AS s ON s.id = p.state_id").
 			Column("s.name").OrderExpr("p.id DESC").Limit(1).
 			Scan(context.Background(), &stateName)
-		if stateName != "RFC" {
-			t.Errorf("state = %q, want RFC", stateName)
-		}
+		assert.Equal(t, "RFC", stateName)
 	})
 
 	t.Run("invalid state falls back to default", func(t *testing.T) {
@@ -236,9 +202,7 @@ func TestInitialPatchStateFull(t *testing.T) {
 			Join("JOIN state AS s ON s.id = p.state_id").
 			Column("s.name").OrderExpr("p.id DESC").Limit(1).
 			Scan(context.Background(), &stateName)
-		if stateName != "New" {
-			t.Errorf("state = %q, want New (fallback)", stateName)
-		}
+		assert.Equal(t, "New", stateName)
 	})
 }
 
@@ -262,15 +226,11 @@ func TestDelegateRequest(t *testing.T) {
 		database.NewSelect().TableExpr("patch").
 			Column("delegate_id").OrderExpr("id DESC").Limit(1).
 			Scan(context.Background(), &delegateID)
-		if delegateID == nil {
-			t.Fatal("expected delegate to be set")
-		}
+		require.NotNil(t, delegateID, "expected delegate to be set")
 		var email string
 		database.NewRaw("SELECT email FROM auth_user WHERE id = ?",
 			*delegateID).Scan(context.Background(), &email)
-		if email != "delegate@example.com" {
-			t.Errorf("delegate email = %q, want delegate@example.com", email)
-		}
+		assert.Equal(t, "delegate@example.com", email)
 	})
 
 	t.Run("no delegate", func(t *testing.T) {
@@ -280,9 +240,7 @@ func TestDelegateRequest(t *testing.T) {
 		database.NewSelect().TableExpr("patch").
 			Column("delegate_id").OrderExpr("id DESC").Limit(1).
 			Scan(context.Background(), &delegateID)
-		if delegateID != nil {
-			t.Error("expected no delegate")
-		}
+		assert.Nil(t, delegateID, "expected no delegate")
 	})
 
 	t.Run("invalid delegate", func(t *testing.T) {
@@ -293,9 +251,7 @@ func TestDelegateRequest(t *testing.T) {
 		database.NewSelect().TableExpr("patch").
 			Column("delegate_id").OrderExpr("id DESC").Limit(1).
 			Scan(context.Background(), &delegateID)
-		if delegateID != nil {
-			t.Error("expected no delegate for invalid email")
-		}
+		assert.Nil(t, delegateID, "expected no delegate for invalid email")
 	})
 }
 
@@ -323,15 +279,9 @@ func TestParseTags(t *testing.T) {
 			WHERE p.msgid = ?
 		`, patchMsgID).Scan(context.Background(), &testedCount, &reviewedCount, &ackedCount)
 
-		if testedCount != 1 {
-			t.Errorf("Tested-by count = %d, want 1", testedCount)
-		}
-		if reviewedCount != 1 {
-			t.Errorf("Reviewed-by count = %d, want 1", reviewedCount)
-		}
-		if ackedCount != 0 {
-			t.Errorf("Acked-by count = %d, want 0", ackedCount)
-		}
+		assert.Equal(t, 1, testedCount, "Tested-by")
+		assert.Equal(t, 1, reviewedCount, "Reviewed-by")
+		assert.Equal(t, 0, ackedCount, "Acked-by")
 	})
 
 	t.Run("tags from comment update patch counts", func(t *testing.T) {
@@ -354,9 +304,7 @@ func TestParseTags(t *testing.T) {
 			WHERE p.msgid = ? AND t.name = 'Tested-by'
 		`, patchMsgID).Scan(context.Background(), &testedCount)
 
-		if testedCount != 1 {
-			t.Errorf("Tested-by count = %d, want 1", testedCount)
-		}
+		assert.Equal(t, 1, testedCount, "Tested-by")
 	})
 }
 
@@ -366,45 +314,29 @@ func TestInlinePatchVariants(t *testing.T) {
 	t.Run("signature stripped", func(t *testing.T) {
 		body := "Test comment\nmore comment\n-- \nsig\n" + sampleDiff
 		err := parseEmail(t, ctx, database, body, withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 1 {
-			t.Error("expected 1 patch")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 1, countPatches(t, database))
 	})
 
 	t.Run("update comment preserved", func(t *testing.T) {
 		body := "Test comment\n---\nUpdate: test update\n" + sampleDiff
 		err := parseEmail(t, ctx, database, body, withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 2 {
-			t.Error("expected 2 patches")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 2, countPatches(t, database))
 	})
 
 	t.Run("list footer stripped", func(t *testing.T) {
 		body := "Test comment\n" + sampleDiff + "\n_______________________________________________\nfooter\n"
 		err := parseEmail(t, ctx, database, body, withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 3 {
-			t.Error("expected 3 patches")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 3, countPatches(t, database))
 	})
 
 	t.Run("diff word in comment", func(t *testing.T) {
 		body := "This is a comment with the word differently in it\n" + sampleDiff
 		err := parseEmail(t, ctx, database, body, withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 4 {
-			t.Error("expected 4 patches")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 4, countPatches(t, database))
 	})
 }
 
@@ -437,15 +369,10 @@ func TestAttachmentPatch(t *testing.T) {
 
 			err := ParseMail(ctx, database,
 				strings.NewReader(data), "test.example.com")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 		})
 	}
-	if countPatches(t, database) != 2 {
-		t.Errorf("expected 2 patches from attachments, got %d",
-			countPatches(t, database))
-	}
+	assert.Equal(t, 2, countPatches(t, database))
 }
 
 func TestSubjectEncoding(t *testing.T) {
@@ -455,18 +382,14 @@ func TestSubjectEncoding(t *testing.T) {
 		parseEmail(t, ctx, database, sampleDiff,
 			withSubject("[PATCH] ascii subject test"),
 			withListID("test.example.com"))
-		if countPatches(t, database) != 1 {
-			t.Error("expected 1 patch")
-		}
+		assert.Equal(t, 1, countPatches(t, database))
 	})
 
 	t.Run("utf8 quoted-printable", func(t *testing.T) {
 		parseEmail(t, ctx, database, sampleDiff,
 			withSubject("=?utf-8?q?[PATCH]_=C3=A9_encoded?="),
 			withListID("test.example.com"))
-		if countPatches(t, database) != 2 {
-			t.Error("expected 2 patches")
-		}
+		assert.Equal(t, 2, countPatches(t, database))
 	})
 }
 
@@ -476,16 +399,12 @@ func TestSubjectEncodingMultipleWords(t *testing.T) {
 	parseEmail(t, ctx, database, sampleDiff,
 		withSubject("=?utf-8?q?[PATCH]_first?= =?utf-8?q?_second?="),
 		withListID("test.example.com"))
-	if countPatches(t, database) != 1 {
-		t.Error("expected 1 patch for multi-word encoded subject")
-	}
+	assert.Equal(t, 1, countPatches(t, database), "expected 1 patch for multi-word encoded subject")
 	var name string
 	database.NewSelect().TableExpr("patch").
 		Column("name").Limit(1).
 		Scan(context.Background(), &name)
-	if name == "" {
-		t.Error("patch name should not be empty")
-	}
+	assert.NotEmpty(t, name, "patch name should not be empty")
 }
 
 func TestFindMessageID(t *testing.T) {
@@ -501,9 +420,7 @@ func TestFindMessageID(t *testing.T) {
 		parseEmail(t, ctx, database, sampleDiff,
 			withMsgID("<test-id@example.com> (comment)"),
 			withListID("test.example.com"))
-		if countPatches(t, database) != 1 {
-			t.Error("expected 1 patch despite comment in Message-ID")
-		}
+		assert.Equal(t, 1, countPatches(t, database), "expected 1 patch despite comment in Message-ID")
 	})
 }
 

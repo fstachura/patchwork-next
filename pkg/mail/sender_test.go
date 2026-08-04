@@ -8,10 +8,12 @@ package mail
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSenderCorrelation(t *testing.T) {
@@ -30,9 +32,7 @@ func TestSenderCorrelation(t *testing.T) {
 			ColumnExpr("count(*)").
 			Where("email = ?", "existing@example.com").
 			Scan(context.Background(), &count)
-		if count != 1 {
-			t.Errorf("expected 1 person, got %d", count)
-		}
+		assert.Equal(t, 1, count)
 	})
 
 	t.Run("existing sender different case", func(t *testing.T) {
@@ -45,9 +45,7 @@ func TestSenderCorrelation(t *testing.T) {
 			ColumnExpr("count(*)").
 			Where("lower(email) = ?", "existing@example.com").
 			Scan(context.Background(), &count)
-		if count != 1 {
-			t.Errorf("expected 1 person (case-insensitive), got %d", count)
-		}
+		assert.Equal(t, 1, count)
 	})
 }
 
@@ -58,18 +56,14 @@ func TestSenderEncoding(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withFrom("Test Author <test@example.com>"),
 			withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	})
 
 	t.Run("utf8 base64", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withFrom("=?utf-8?b?w4nDqQ==?= <encoded@example.com>"),
 			withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	})
 
 	t.Run("invalid email", func(t *testing.T) {
@@ -77,9 +71,7 @@ func TestSenderEncoding(t *testing.T) {
 			withFrom("invalid-email"),
 			withListID("test.example.com"))
 		var pe *ParseError
-		if !errors.As(err, &pe) {
-			t.Errorf("expected ParseError, got %v", err)
-		}
+		assert.ErrorAs(t, err, &pe)
 	})
 }
 
@@ -91,9 +83,7 @@ func TestSenderEncodingEmpty(t *testing.T) {
 	err := ParseMail(ctx, database,
 		strings.NewReader(data), "test.example.com")
 	var pe *ParseError
-	if !errors.As(err, &pe) {
-		t.Errorf("expected ParseError for empty From, got %v", err)
-	}
+	assert.ErrorAs(t, err, &pe)
 }
 
 func TestSenderEncodingQP(t *testing.T) {
@@ -102,16 +92,12 @@ func TestSenderEncodingQP(t *testing.T) {
 	err := parseEmail(t, ctx, database, sampleDiff,
 		withFrom("=?utf-8?q?=C3=89ric?= <eric@example.com>"),
 		withListID("test.example.com"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	var name string
 	database.NewSelect().TableExpr("person").
 		Column("name").Where("email = ?", "eric@example.com").
 		Scan(context.Background(), &name)
-	if name == "" {
-		t.Error("expected person name to be decoded")
-	}
+	assert.NotEmpty(t, name, "expected person name to be decoded")
 }
 
 func TestSenderEncodingQPSplit(t *testing.T) {
@@ -120,17 +106,13 @@ func TestSenderEncodingQPSplit(t *testing.T) {
 	err := parseEmail(t, ctx, database, sampleDiff,
 		withFrom("=?utf-8?q?Test?= =?utf-8?q?_User?= <test-split@example.com>"),
 		withListID("test.example.com"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var name string
 	database.NewSelect().TableExpr("person").
 		Column("name").Where("email = ?", "test-split@example.com").
 		Scan(context.Background(), &name)
-	if name == "" {
-		t.Error("expected person name from split QP encoding")
-	}
+	assert.NotEmpty(t, name, "expected person name from split QP encoding")
 }
 
 func TestSenderDifferentFormat(t *testing.T) {
@@ -148,9 +130,7 @@ func TestSenderDifferentFormat(t *testing.T) {
 		ColumnExpr("count(*)").
 		Where("email = ?", "existing@example.com").
 		Scan(context.Background(), &count)
-	if count != 1 {
-		t.Errorf("expected 1 person for same email different format, got %d", count)
-	}
+	assert.Equal(t, 1, count)
 }
 
 func TestSenderDMARCMunging(t *testing.T) {
@@ -176,16 +156,12 @@ func TestSenderDMARCMunging(t *testing.T) {
 			ColumnExpr("count(*)").
 			Where("email = ?", "existing@example.com").
 			Scan(context.Background(), &count)
-		if count != 1 {
-			t.Errorf("expected 1 person for existing@example.com, got %d", count)
-		}
+		assert.Equal(t, 1, count)
 		var ids []int
 		database.NewRaw(
 			"SELECT DISTINCT submitter_id FROM patch",
 		).Scan(context.Background(), &ids)
-		if len(ids) != 1 {
-			t.Errorf("expected all patches to have same submitter, got %d distinct", len(ids))
-		}
+		assert.Len(t, ids, 1, "expected all patches to have same submitter")
 	})
 
 	t.Run("google X-Original-From", func(t *testing.T) {
@@ -202,9 +178,7 @@ func TestSenderDMARCMunging(t *testing.T) {
 			ColumnExpr("count(*)").
 			Where("email = ?", "existing@example.com").
 			Scan(context.Background(), &count)
-		if count != 1 {
-			t.Errorf("expected 1 person for existing@example.com, got %d", count)
-		}
+		assert.Equal(t, 1, count)
 	})
 }
 
@@ -228,7 +202,5 @@ func TestSenderWeirdDMARCMunging(t *testing.T) {
 		ColumnExpr("count(*)").
 		Where("email = ?", "existing@example.com").
 		Scan(context.Background(), &count)
-	if count != 1 {
-		t.Errorf("expected 1 person after weird DMARC unmangling, got %d", count)
-	}
+	assert.Equal(t, 1, count)
 }

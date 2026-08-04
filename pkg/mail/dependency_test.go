@@ -16,6 +16,8 @@ import (
 	"testing"
 
 	"github.com/emersion/go-mbox"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseDependsOn(t *testing.T) {
@@ -36,9 +38,7 @@ func TestParseDependsOn(t *testing.T) {
 		database.NewSelect().TableExpr("series_dependencies").
 			ColumnExpr("count(*)").
 			Scan(context.Background(), &depCount)
-		if depCount != 0 {
-			t.Errorf("expected 0 dependencies, got %d", depCount)
-		}
+		assert.Equal(t, 0, depCount)
 	})
 
 	t.Run("msgid dependency", func(t *testing.T) {
@@ -46,9 +46,7 @@ func TestParseDependsOn(t *testing.T) {
 		database.NewSelect().TableExpr("patch").
 			Column("series_id").Where("msgid = ?", baseMsgID).
 			Scan(context.Background(), &baseSeries)
-		if !baseSeries.Valid {
-			t.Fatalf("base patch has no series (series_id=%v)", baseSeries)
-		}
+		require.True(t, baseSeries.Valid, "base patch has no series")
 
 		parseEmail(t, ctx, database, sampleDiff+"\nDepends-on: "+baseMsgID+"\n",
 			withSubject("[PATCH 1/1] dependent patch"),
@@ -58,9 +56,7 @@ func TestParseDependsOn(t *testing.T) {
 		database.NewSelect().TableExpr("series_dependencies").
 			ColumnExpr("count(*)").
 			Scan(context.Background(), &depCount)
-		if depCount != 1 {
-			t.Errorf("expected 1 dependency, got %d", depCount)
-		}
+		assert.Equal(t, 1, depCount)
 	})
 }
 
@@ -93,9 +89,7 @@ func TestDependencyByMsgIDOnCover(t *testing.T) {
 	database.NewSelect().TableExpr("series_dependencies").
 		ColumnExpr("count(*)").
 		Scan(context.Background(), &depCount)
-	if depCount != 1 {
-		t.Errorf("expected 1 dependency, got %d", depCount)
-	}
+	assert.Equal(t, 1, depCount)
 }
 
 func TestDependencyCircularPrevention(t *testing.T) {
@@ -217,9 +211,7 @@ func TestDependencyMulti(t *testing.T) {
 		Scan(context.Background(), &series2PatchMsgID)
 
 	data, err := os.ReadFile("testdata/series/dependency-multi.mbox.template")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expanded := strings.ReplaceAll(string(data), "{depends_token_1}", basePatchMsgID)
 	expanded = strings.ReplaceAll(expanded, "{depends_token_2}", series2PatchMsgID)
 
@@ -237,9 +229,7 @@ func TestDependencyMulti(t *testing.T) {
 	database.NewSelect().TableExpr("series_dependencies").
 		ColumnExpr("count(*)").
 		Scan(context.Background(), &depCount)
-	if depCount < 3 {
-		t.Errorf("expected at least 3 dependencies, got %d", depCount)
-	}
+	assert.GreaterOrEqual(t, depCount, 3)
 }
 
 func TestDependencyByPatch2MsgID(t *testing.T) {
@@ -251,9 +241,7 @@ func TestDependencyByPatch2MsgID(t *testing.T) {
 	database.NewRaw(
 		"SELECT msgid FROM patch ORDER BY id LIMIT 1 OFFSET 1",
 	).Scan(context.Background(), &patch2MsgID)
-	if patch2MsgID == "" {
-		t.Fatal("no second patch found in base series")
-	}
+	require.NotEmpty(t, patch2MsgID, "no second patch found in base series")
 
 	parseMboxTemplate(t, ctx, database, "series/dependency-one-first-patch.mbox.template",
 		patch2MsgID, "test.example.com")
@@ -296,9 +284,7 @@ func TestDependencyMulti2(t *testing.T) {
 	var depCount int
 	database.NewSelect().TableExpr("series_dependencies").
 		ColumnExpr("count(*)").Scan(context.Background(), &depCount)
-	if depCount < 3 {
-		t.Errorf("expected at least 3 dependencies, got %d", depCount)
-	}
+	assert.GreaterOrEqual(t, depCount, 3)
 }
 
 func TestParseDependsOnGarbageRef2(t *testing.T) {

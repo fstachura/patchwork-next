@@ -8,6 +8,9 @@ package api
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWebhookCRUD(t *testing.T) {
@@ -25,64 +28,44 @@ func TestWebhookCRUD(t *testing.T) {
 			"secret": "s3cret",
 			"events": "*",
 		})
-	if resp.StatusCode != 201 {
-		t.Fatalf("create: status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 201, resp.StatusCode)
 	var hook map[string]any
 	decodeJSON(t, resp, &hook)
-	if hook["url"] != "http://hook.example.com" {
-		t.Errorf("url = %v", hook["url"])
-	}
-	if _, hasSecret := hook["secret"]; hasSecret {
-		t.Error("secret should not be in response")
-	}
+	assert.Equal(t, "http://hook.example.com", hook["url"])
+	assert.NotContains(t, hook, "secret", "secret should not be in response")
 	hookID := int(hook["id"].(float64))
 
 	// list
 	resp = s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token, nil)
-	if resp.StatusCode != 200 {
-		t.Fatalf("list: status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var hooks []map[string]any
 	decodeJSON(t, resp, &hooks)
-	if len(hooks) != 1 {
-		t.Errorf("list: got %d, want 1", len(hooks))
-	}
+	assert.Len(t, hooks, 1)
 
 	// detail
 	resp = s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks/%d", projID, hookID), token, nil)
-	if resp.StatusCode != 200 {
-		t.Fatalf("detail: status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	// update
 	resp = s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks/%d", projID, hookID), token,
 		map[string]any{"active": false})
-	if resp.StatusCode != 200 {
-		t.Fatalf("update: status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	decodeJSON(t, resp, &hook)
-	if hook["active"] != false {
-		t.Errorf("active = %v, want false", hook["active"])
-	}
+	assert.Equal(t, false, hook["active"])
 
 	// delete
 	resp = s.authRequest(t, "DELETE",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks/%d", projID, hookID), token, nil)
-	if resp.StatusCode != 204 {
-		t.Fatalf("delete: status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 204, resp.StatusCode)
 
 	// list should be empty
 	resp = s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token, nil)
 	decodeJSON(t, resp, &hooks)
-	if len(hooks) != 0 {
-		t.Errorf("after delete: got %d, want 0", len(hooks))
-	}
+	assert.Len(t, hooks, 0)
 }
 
 func TestWebhookCreateInvalidEvents(t *testing.T) {
@@ -95,9 +78,7 @@ func TestWebhookCreateInvalidEvents(t *testing.T) {
 	resp := s.authRequest(t, "POST",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token,
 		map[string]string{"url": "http://x", "events": "invalid-event"})
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 400", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestWebhookCreateSpecificEvents(t *testing.T) {
@@ -114,14 +95,10 @@ func TestWebhookCreateSpecificEvents(t *testing.T) {
 			"secret": "",
 			"events": "patch-created,series-completed",
 		})
-	if resp.StatusCode != 201 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 201, resp.StatusCode)
 	var hook map[string]any
 	decodeJSON(t, resp, &hook)
-	if hook["events"] != "patch-created,series-completed" {
-		t.Errorf("events = %v", hook["events"])
-	}
+	assert.Equal(t, "patch-created,series-completed", hook["events"])
 }
 
 func TestWebhookListAnonymous(t *testing.T) {
@@ -130,9 +107,7 @@ func TestWebhookListAnonymous(t *testing.T) {
 
 	resp := s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), "", nil)
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }
 
 func TestWebhookListNonMaintainer(t *testing.T) {
@@ -143,9 +118,7 @@ func TestWebhookListNonMaintainer(t *testing.T) {
 
 	resp := s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token, nil)
-	if resp.StatusCode != 403 {
-		t.Errorf("status = %d, want 403", resp.StatusCode)
-	}
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 func TestWebhookSecretWriteOnly(t *testing.T) {
@@ -158,20 +131,14 @@ func TestWebhookSecretWriteOnly(t *testing.T) {
 	resp := s.authRequest(t, "POST",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks", projID), token,
 		map[string]string{"url": "http://x", "secret": "topsecret", "events": "*"})
-	if resp.StatusCode != 201 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 201, resp.StatusCode)
 	var hook map[string]any
 	decodeJSON(t, resp, &hook)
-	if _, has := hook["secret"]; has {
-		t.Error("secret should not appear in response")
-	}
+	assert.NotContains(t, hook, "secret", "secret should not appear in response")
 
 	hookID := int(hook["id"].(float64))
 	resp = s.authRequest(t, "GET",
 		fmt.Sprintf("/api/1.4/projects/%d/webhooks/%d", projID, hookID), token, nil)
 	decodeJSON(t, resp, &hook)
-	if _, has := hook["secret"]; has {
-		t.Error("secret should not appear in GET response")
-	}
+	assert.NotContains(t, hook, "secret", "secret should not appear in GET response")
 }

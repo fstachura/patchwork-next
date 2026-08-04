@@ -9,6 +9,9 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCommentUpdateNotAuthorized(t *testing.T) {
@@ -20,17 +23,13 @@ func TestCommentUpdateNotAuthorized(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d/comments/%d", patchID, commentID), "",
 		map[string]bool{"addressed": true})
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }
 
 func TestCoverCommentDetailInvalidCover(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/covers/99999/comments/1")
-	if resp.StatusCode != 404 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestCoverCommentList(t *testing.T) {
@@ -44,9 +43,7 @@ func TestCoverCommentList(t *testing.T) {
 		personID, coverID)
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/covers/%d/comments", coverID))
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 	assertField(t, items[0], "id")
 	assertField(t, items[0], "content")
 	assertNested(t, items[0], "submitter", "id")
@@ -55,17 +52,13 @@ func TestCoverCommentList(t *testing.T) {
 func TestCoverCommentListInvalidCover(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/covers/invalid/comments")
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 422", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestCoverCommentListNonExistent(t *testing.T) {
 	s := newTestServer(t)
 	items := getList(t, s, "/api/1.4/covers/99999/comments")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchCommentCreate405(t *testing.T) {
@@ -76,9 +69,7 @@ func TestPatchCommentCreate405(t *testing.T) {
 	resp := s.authRequest(t, "POST",
 		fmt.Sprintf("/api/1.4/patches/%d/comments", patchID), "",
 		map[string]string{"content": "test"})
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestPatchCommentDelete405(t *testing.T) {
@@ -89,9 +80,7 @@ func TestPatchCommentDelete405(t *testing.T) {
 
 	resp := s.authRequest(t, "DELETE",
 		fmt.Sprintf("/api/1.4/patches/%d/comments/%d", patchID, commentID), "", nil)
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestPatchCommentDetail(t *testing.T) {
@@ -108,9 +97,7 @@ func TestPatchCommentDetail(t *testing.T) {
 func TestPatchCommentDetailInvalidPatch(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/patches/99999/comments/1")
-	if resp.StatusCode != 404 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestPatchCommentList(t *testing.T) {
@@ -120,9 +107,7 @@ func TestPatchCommentList(t *testing.T) {
 	commentID := s.insertComment(t, patchID, "<comment@test>")
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments", patchID))
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 	c := items[0]
 	assertValue(t, c, "id", float64(commentID))
 	assertValue(t, c, "msgid", "<comment@test>")
@@ -131,9 +116,7 @@ func TestPatchCommentList(t *testing.T) {
 	assertField(t, c, "addressed")
 	assertNested(t, c, "submitter", "id")
 	assertNested(t, c, "submitter", "email")
-	if c["content"] != "looks good" {
-		t.Errorf("content = %v, want 'looks good'", c["content"])
-	}
+	assert.Equal(t, "looks good", c["content"])
 }
 
 func TestPatchCommentListEmpty(t *testing.T) {
@@ -142,25 +125,19 @@ func TestPatchCommentListEmpty(t *testing.T) {
 	patchID := s.insertPatch(t, projID, "<pce@test>", "p")
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments", patchID))
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchCommentListInvalidPatch(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/patches/invalid/comments")
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 422", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestPatchCommentNonExistentPatch(t *testing.T) {
 	s := newTestServer(t)
 	items := getList(t, s, "/api/1.4/patches/99999/comments")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchCommentURLAndSubject(t *testing.T) {
@@ -174,13 +151,9 @@ func TestPatchCommentURLAndSubject(t *testing.T) {
 		"Subject: Re: test\n", personID, patchID)
 
 	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/%d/comments", patchID))
-	if len(items) != 1 {
-		t.Fatalf("got %d", len(items))
-	}
+	require.Len(t, items, 1)
 	assertField(t, items[0], "url")
-	if items[0]["subject"] != "Re: test" {
-		t.Errorf("subject = %v, want 'Re: test'", items[0]["subject"])
-	}
+	assert.Equal(t, "Re: test", items[0]["subject"])
 }
 
 func TestUpdateCommentAddressed(t *testing.T) {
@@ -196,15 +169,11 @@ func TestUpdateCommentAddressed(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d/comments/%d", patchID, commentID),
 		token, map[string]bool{"addressed": true})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	var result map[string]any
 	decodeJSON(t, resp, &result)
-	if result["addressed"] != true {
-		t.Errorf("addressed = %v, want true", result["addressed"])
-	}
+	assert.Equal(t, true, result["addressed"])
 }
 
 func TestUpdateCoverCommentAddressed(t *testing.T) {
@@ -225,12 +194,8 @@ func TestUpdateCoverCommentAddressed(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/covers/%d/comments/%d", coverID, commentID),
 		token, map[string]bool{"addressed": true})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 	var result map[string]any
 	decodeJSON(t, resp, &result)
-	if result["addressed"] != true {
-		t.Errorf("addressed = %v, want true", result["addressed"])
-	}
+	assert.Equal(t, true, result["addressed"])
 }

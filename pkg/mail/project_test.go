@@ -10,6 +10,9 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSubjectMatch(t *testing.T) {
@@ -23,48 +26,32 @@ func TestSubjectMatch(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withSubject("[PATCH PROJECT X subsystem] test"),
 			withListID(listid))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 1 {
-			t.Error("expected 1 patch")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 1, countPatches(t, database))
 	})
 
 	t.Run("keyword match", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withSubject("[PATCH keyword] subsystem"),
 			withListID(listid))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 2 {
-			t.Error("expected 2 patches")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 2, countPatches(t, database))
 	})
 
 	t.Run("default project", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withSubject("[PATCH unknown project]"),
 			withListID(listid))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 3 {
-			t.Error("expected 3 patches")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 3, countPatches(t, database))
 	})
 
 	t.Run("nonexistent project", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withSubject("[PATCH] test"),
 			withListID("nonexistent.test.org"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 3 {
-			t.Error("should still be 3")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 3, countPatches(t, database), "should still be 3")
 	})
 }
 
@@ -77,12 +64,8 @@ func TestSubjectMatchListIDOverride(t *testing.T) {
 		withListID("nonexistent.test.org"))
 	err := ParseMail(ctx, database, bytes.NewReader(data),
 		"test-subject-match.test.org")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if countPatches(t, database) != 1 {
-		t.Error("expected 1 patch with listid override")
-	}
+	require.NoError(t, err)
+	assert.Equal(t, 1, countPatches(t, database), "expected 1 patch with listid override")
 }
 
 func TestListIdHeader(t *testing.T) {
@@ -91,23 +74,15 @@ func TestListIdHeader(t *testing.T) {
 	t.Run("no list id", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withListID(""))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 0 {
-			t.Error("expected 0 patches")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 0, countPatches(t, database))
 	})
 
 	t.Run("valid list id", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
 			withListID("test.example.com"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 1 {
-			t.Error("expected 1 patch")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 1, countPatches(t, database))
 	})
 }
 
@@ -118,35 +93,23 @@ func TestListIdHeaderVariants(t *testing.T) {
 	t.Run("blank list id", func(t *testing.T) {
 		data := createEmail(sampleDiff, withListID(""))
 		err := ParseMail(ctx, database, bytes.NewReader(data))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 0 {
-			t.Error("expected 0 patches for blank list-id")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 0, countPatches(t, database), "expected 0 patches for blank list-id")
 	})
 
 	t.Run("substring list id", func(t *testing.T) {
 		data := createEmail(sampleDiff, withListID("example.com"))
 		err := ParseMail(ctx, database, bytes.NewReader(data))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 0 {
-			t.Error("expected 0 patches for substring match")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 0, countPatches(t, database), "expected 0 patches for substring match")
 	})
 
 	t.Run("short list id", func(t *testing.T) {
 		data := createEmail(sampleDiff)
 		raw := strings.Replace(string(data), "List-Id: <test.example.com>", "List-Id: test.example.com", 1)
 		err := ParseMail(ctx, database, strings.NewReader(raw))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 1 {
-			t.Error("expected 1 patch for short list-id")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 1, countPatches(t, database), "expected 1 patch for short list-id")
 	})
 
 	t.Run("long list id", func(t *testing.T) {
@@ -154,12 +117,8 @@ func TestListIdHeaderVariants(t *testing.T) {
 		raw := strings.Replace(string(data), "List-Id: <test.example.com>",
 			"List-Id: Test text <test.example.com>", 1)
 		err := ParseMail(ctx, database, strings.NewReader(raw))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if countPatches(t, database) != 2 {
-			t.Error("expected 2 patches for long list-id")
-		}
+		require.NoError(t, err)
+		assert.Equal(t, 2, countPatches(t, database), "expected 2 patches for long list-id")
 	})
 }
 
@@ -170,9 +129,7 @@ func TestListIdWhitespace(t *testing.T) {
 	raw := strings.Replace(string(data), "List-Id: <test.example.com>",
 		"List-Id:  ", 1)
 	ParseMail(ctx, database, strings.NewReader(raw))
-	if countPatches(t, database) != 0 {
-		t.Error("expected 0 patches for whitespace list-id")
-	}
+	assert.Equal(t, 0, countPatches(t, database), "expected 0 patches for whitespace list-id")
 }
 
 func TestMultipleProjects(t *testing.T) {
@@ -186,10 +143,7 @@ func TestMultipleProjects(t *testing.T) {
 		withSubject("[PATCH] test"),
 		withListID("project-b.example.com"))
 
-	if countPatches(t, database) != 2 {
-		t.Fatalf("expected 2 patches (one per project), got %d",
-			countPatches(t, database))
-	}
+	require.Equal(t, 2, countPatches(t, database))
 	var countA, countB int
 	database.NewSelect().TableExpr("patch").
 		ColumnExpr("count(*)").
@@ -199,10 +153,6 @@ func TestMultipleProjects(t *testing.T) {
 		ColumnExpr("count(*)").
 		Where("project_id = (SELECT id FROM project WHERE linkname = 'project-b')").
 		Scan(context.Background(), &countB)
-	if countA != 1 {
-		t.Errorf("project-a: got %d patches, want 1", countA)
-	}
-	if countB != 1 {
-		t.Errorf("project-b: got %d patches, want 1", countB)
-	}
+	assert.Equal(t, 1, countA, "project-a")
+	assert.Equal(t, 1, countB, "project-b")
 }

@@ -18,6 +18,8 @@ import (
 
 	"github.com/emersion/go-mbox"
 	"github.com/emersion/go-message/mail"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
 
 	"github.com/getpatchwork/patchwork/pkg/config"
@@ -34,13 +36,10 @@ func testDB(t *testing.T, listid string) (*bun.DB, context.Context, *events.Bus,
 	cfg := &config.Config{}
 	cfg.Database.URL = "sqlite://:memory:"
 	database, err := db.Open(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if err := migrations.RunMigrations(context.Background(), database); err != nil {
-		t.Fatal(err)
-	}
+	err = migrations.RunMigrations(context.Background(), database)
+	require.NoError(t, err)
 
 	bus := events.Start(context.Background(), database)
 	ctx := db.WithBus(context.Background(), bus)
@@ -59,9 +58,7 @@ func testDB(t *testing.T, listid string) (*bun.DB, context.Context, *events.Bus,
 	err = database.NewInsert().Model(&proj).
 		Returning("*").
 		Scan(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	return database, ctx, bus, &proj
 }
@@ -81,9 +78,7 @@ func testProject(t *testing.T, database *bun.DB, linkname, name, listid, subject
 		) VALUES (?, ?, ?, ?, ?, '', '', '', '', '', '', false, true, false, false)
 		RETURNING id
 	`, linkname, name, listid, "test@"+listid, subjectMatch).Scan(ctx, &id)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return &db.Project{
 		ID: id, Linkname: linkname, Name: name,
 		Listid: listid, Listemail: "test@" + listid,
@@ -100,27 +95,17 @@ func TestDBSetup(t *testing.T) {
 		TableExpr("state").
 		ColumnExpr("count(*)").
 		Scan(t.Context(), &count)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count < 5 {
-		t.Errorf("expected at least 5 states, got %d", count)
-	}
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, count, 5)
 
 	err = database.NewSelect().
 		TableExpr("tag").
 		ColumnExpr("count(*)").
 		Scan(t.Context(), &count)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count < 3 {
-		t.Errorf("expected at least 3 tags, got %d", count)
-	}
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, count, 3)
 
-	if proj.ID == 0 {
-		t.Error("expected project ID to be set")
-	}
+	assert.NotZero(t, proj.ID, "expected project ID to be set")
 }
 
 // parseMbox reads an mbox file from testdata/ and calls ParseMail for
@@ -130,9 +115,7 @@ func parseMbox(t *testing.T, ctx context.Context, database *bun.DB, filename str
 	t.Helper()
 
 	data, err := os.ReadFile("testdata/" + filename)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	r := mbox.NewReader(bytes.NewReader(data))
 	var result parseResult
@@ -143,9 +126,7 @@ func parseMbox(t *testing.T, ctx context.Context, database *bun.DB, filename str
 			break
 		}
 		buf, err := io.ReadAll(msg)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		var lid string
 		if len(listid) > 0 {
 			lid = listid[0]
@@ -162,7 +143,7 @@ func parseMbox(t *testing.T, ctx context.Context, database *bun.DB, filename str
 				result.parseErrors++
 				continue
 			}
-			t.Fatalf("ParseMail: %v", err)
+			require.NoError(t, err, "ParseMail")
 		}
 		result.messages++
 	}
@@ -202,9 +183,7 @@ func makeHeader(t *testing.T, headers map[string]string) *mail.Header {
 	}
 	buf.WriteString("\r\n")
 	m, err := mail.CreateReader(&buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return &m.Header
 }
 
@@ -242,9 +221,7 @@ func assertAllPatchesHaveSeries(t *testing.T, database *bun.DB) {
 	database.NewSelect().TableExpr("patch").
 		ColumnExpr("count(*)").Where("series_id IS NULL").
 		Scan(context.Background(), &orphans)
-	if orphans > 0 {
-		t.Errorf("%d patches have no series assignment", orphans)
-	}
+	assert.Equal(t, 0, orphans, "patches have no series assignment")
 }
 
 // assertAllPatchesInOneSeries verifies all patches belong to the same series.
@@ -254,9 +231,7 @@ func assertAllPatchesInOneSeries(t *testing.T, database *bun.DB) {
 	database.NewRaw(
 		"SELECT count(DISTINCT series_id) FROM patch WHERE series_id IS NOT NULL",
 	).Scan(context.Background(), &distinctSeries)
-	if distinctSeries != 1 {
-		t.Errorf("patches belong to %d different series, want 1", distinctSeries)
-	}
+	assert.Equal(t, 1, distinctSeries)
 }
 
 // assertCoverLinkedToSeries verifies the cover letter is linked to a series.
@@ -267,9 +242,7 @@ func assertCoverLinkedToSeries(t *testing.T, database *bun.DB) {
 		SELECT count(*) FROM series
 		WHERE cover_letter_id IS NOT NULL
 	`).Scan(context.Background(), &count)
-	if count == 0 {
-		t.Error("no series has a cover letter linked")
-	}
+	assert.NotZero(t, count, "no series has a cover letter linked")
 }
 
 // assertPatchesInCorrectProject verifies all patches belong to the given project.
@@ -279,9 +252,7 @@ func assertPatchesInCorrectProject(t *testing.T, database *bun.DB, projectID int
 	database.NewSelect().TableExpr("patch").
 		ColumnExpr("count(*)").Where("project_id != ?", projectID).
 		Scan(context.Background(), &wrong)
-	if wrong > 0 {
-		t.Errorf("%d patches in wrong project", wrong)
-	}
+	assert.Equal(t, 0, wrong, "patches in wrong project")
 }
 
 // assertDelegateIs verifies the most recent patch has the given delegate.
@@ -291,9 +262,8 @@ func assertDelegateIs(t *testing.T, database *bun.DB, wantUserID int) {
 	database.NewSelect().TableExpr("patch").
 		Column("delegate_id").OrderExpr("id DESC").Limit(1).
 		Scan(context.Background(), &delegateID)
-	if delegateID == nil || *delegateID != wantUserID {
-		t.Errorf("delegate_id = %v, want %d", delegateID, wantUserID)
-	}
+	require.NotNil(t, delegateID)
+	assert.Equal(t, wantUserID, *delegateID)
 }
 
 func assertPatchContent(t *testing.T, database *bun.DB, msgid string, wantDiff, wantComment bool) {
@@ -302,14 +272,13 @@ func assertPatchContent(t *testing.T, database *bun.DB, msgid string, wantDiff, 
 	database.NewSelect().TableExpr("patch").
 		Column("diff", "content").Where("msgid = ?", msgid).
 		Scan(context.Background(), &diff, &content)
-	if wantDiff && diff == nil {
-		t.Error("expected diff to be set")
+	if wantDiff {
+		assert.NotNil(t, diff, "expected diff to be set")
+	} else {
+		assert.Nil(t, diff, "expected no diff")
 	}
-	if !wantDiff && diff != nil {
-		t.Error("expected no diff")
-	}
-	if wantComment && content == nil {
-		t.Error("expected content to be set")
+	if wantComment {
+		assert.NotNil(t, content, "expected content to be set")
 	}
 }
 
@@ -318,9 +287,7 @@ func assertPatchContent(t *testing.T, database *bun.DB, msgid string, wantDiff, 
 func parseMboxTemplate(t *testing.T, ctx context.Context, database *bun.DB, filename, dependsToken, listid string) parseResult {
 	t.Helper()
 	data, err := os.ReadFile("testdata/" + filename)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expanded := strings.ReplaceAll(string(data), "{depends_token}", dependsToken)
 
 	r := mbox.NewReader(strings.NewReader(expanded))
@@ -332,9 +299,7 @@ func parseMboxTemplate(t *testing.T, ctx context.Context, database *bun.DB, file
 			break
 		}
 		buf, err := io.ReadAll(msg)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		err = ParseMail(ctx, database, bytes.NewReader(buf), listid)
 		if err != nil {
 			var dup *DuplicateMailError
@@ -347,7 +312,7 @@ func parseMboxTemplate(t *testing.T, ctx context.Context, database *bun.DB, file
 				result.parseErrors++
 				continue
 			}
-			t.Fatalf("ParseMail: %v", err)
+			require.NoError(t, err, "ParseMail")
 		}
 		result.messages++
 	}
@@ -369,9 +334,7 @@ func assertDependencyCount(t *testing.T, database *bun.DB, want int) {
 	database.NewSelect().TableExpr("series_dependencies").
 		ColumnExpr("count(*)").
 		Scan(context.Background(), &count)
-	if count != want {
-		t.Errorf("dependency count = %d, want %d", count, want)
-	}
+	assert.Equal(t, want, count, "dependency count")
 }
 
 // assertSerialized verifies patch-to-series assignment matches expected
@@ -384,10 +347,7 @@ func assertSerialized(t *testing.T, database *bun.DB, patchCounts []int) {
 	var seriesCount int
 	database.NewSelect().TableExpr("series").
 		ColumnExpr("count(*)").Scan(ctx, &seriesCount)
-	if seriesCount != len(patchCounts) {
-		t.Errorf("series count = %d, want %d", seriesCount, len(patchCounts))
-		return
-	}
+	require.Equal(t, len(patchCounts), seriesCount)
 
 	var seriesIDs []int
 	database.NewRaw(
@@ -399,10 +359,7 @@ func assertSerialized(t *testing.T, database *bun.DB, patchCounts []int) {
 		database.NewSelect().TableExpr("patch").
 			ColumnExpr("count(*)").Where("series_id = ?", seriesIDs[i]).
 			Scan(ctx, &gotCount)
-		if gotCount != wantCount {
-			t.Errorf("series[%d] (id=%d): %d patches, want %d",
-				i, seriesIDs[i], gotCount, wantCount)
-		}
+		assert.Equal(t, wantCount, gotCount, "series[%d] (id=%d)", i, seriesIDs[i])
 	}
 }
 
@@ -474,9 +431,7 @@ func parseEmail(t *testing.T, ctx context.Context, database *bun.DB, body string
 func parseEml(t *testing.T, ctx context.Context, database *bun.DB, filename string) error {
 	t.Helper()
 	data, err := os.ReadFile("testdata/" + filename)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return ParseMail(ctx, database, bytes.NewReader(data))
 }
 

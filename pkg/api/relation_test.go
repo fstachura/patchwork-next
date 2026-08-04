@@ -9,6 +9,9 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRelationCreateAnonymous(t *testing.T) {
@@ -20,9 +23,7 @@ func TestRelationCreateAnonymous(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p1), "",
 		map[string]any{"related": []int{p2}})
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }
 
 func TestRelationCreateThreePatch(t *testing.T) {
@@ -38,21 +39,17 @@ func TestRelationCreateThreePatch(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p1), token,
 		map[string]any{"related": []int{p2, p3}})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	// all three should share same relation
 	for _, pid := range []int{p1, p2, p3} {
 		patch := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", pid))
 		related, ok := patch["related"].([]any)
+		assert.True(t, ok, "patch %d: related field missing or not an array", pid)
 		if !ok {
-			t.Errorf("patch %d: related field missing or not an array", pid)
 			continue
 		}
-		if len(related) != 2 {
-			t.Errorf("patch %d related: got %d, want 2", pid, len(related))
-		}
+		assert.Len(t, related, 2, "patch %d related", pid)
 	}
 }
 
@@ -67,9 +64,7 @@ func TestRelationCreateUser(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p1), token,
 		map[string]any{"related": []int{p2}})
-	if resp.StatusCode != 403 {
-		t.Errorf("status = %d, want 403", resp.StatusCode)
-	}
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 func TestRelationCrossProjectForbidden(t *testing.T) {
@@ -105,9 +100,7 @@ func TestRelationCrossProjectForbidden(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", pA), token,
 		map[string]any{"related": []int{pB}})
-	if resp.StatusCode != 403 {
-		t.Errorf("status = %d, want 403", resp.StatusCode)
-	}
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 func TestRelationDeleteAnonymous(t *testing.T) {
@@ -126,9 +119,7 @@ func TestRelationDeleteAnonymous(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p1), "",
 		map[string]any{"related": []int{}})
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }
 
 func TestRelationDeleteFromThree(t *testing.T) {
@@ -149,22 +140,17 @@ func TestRelationDeleteFromThree(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p1), token,
 		map[string]any{"related": []int{}})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	// p1 has no relations, p2 and p3 still related to each other
 	patch1 := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", p1))
-	if rel, ok := patch1["related"].([]any); ok && len(rel) != 0 {
-		t.Error("p1 should have no relations")
+	if rel, ok := patch1["related"].([]any); ok {
+		assert.Empty(t, rel, "p1 should have no relations")
 	}
 	patch2 := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", p2))
 	rel2, ok := patch2["related"].([]any)
-	if !ok {
-		t.Error("p2 related field missing")
-	} else if len(rel2) != 1 {
-		t.Error("p2 should have 1 relation (p3)")
-	}
+	assert.True(t, ok, "p2 related field missing")
+	assert.Len(t, rel2, 1, "p2 should have 1 relation (p3)")
 }
 
 func TestRelationDeleteMaintainer(t *testing.T) {
@@ -185,13 +171,11 @@ func TestRelationDeleteMaintainer(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p1), token,
 		map[string]any{"related": []int{}})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	patch := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", p1))
-	if rel, ok := patch["related"].([]any); ok && len(rel) != 0 {
-		t.Errorf("related after delete: got %d, want 0", len(rel))
+	if rel, ok := patch["related"].([]any); ok {
+		assert.Empty(t, rel, "related after delete")
 	}
 }
 
@@ -214,17 +198,13 @@ func TestRelationExtendThroughNew(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p3), token,
 		map[string]any{"related": []int{p1}})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	// all three in same group
 	patch3 := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", p3))
-	if rel, ok := patch3["related"].([]any); !ok {
-		t.Error("p3 related field missing")
-	} else if len(rel) != 2 {
-		t.Errorf("p3 related: got %d, want 2", len(rel))
-	}
+	rel, ok := patch3["related"].([]any)
+	require.True(t, ok, "p3 related field missing")
+	assert.Len(t, rel, 2)
 }
 
 func TestRelationForbidMoveBetweenRelations(t *testing.T) {
@@ -250,9 +230,7 @@ func TestRelationForbidMoveBetweenRelations(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p1), token,
 		map[string]any{"related": []int{p3}})
-	if resp.StatusCode != 409 {
-		t.Errorf("status = %d, want 409", resp.StatusCode)
-	}
+	assert.Equal(t, 409, resp.StatusCode)
 }
 
 func TestRelationListTwoPatch(t *testing.T) {
@@ -268,33 +246,21 @@ func TestRelationListTwoPatch(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", p1), token,
 		map[string]any{"related": []int{p2}})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	// check p1 sees p2
 	patch1 := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", p1))
 	rel1, ok := patch1["related"].([]any)
-	if !ok {
-		t.Fatal("p1 related field missing")
-	}
-	if len(rel1) != 1 {
-		t.Fatalf("p1 related: got %d, want 1", len(rel1))
-	}
+	require.True(t, ok, "p1 related field missing")
+	require.Len(t, rel1, 1)
 	relPatch := rel1[0].(map[string]any)
-	if int(relPatch["id"].(float64)) != int(p2) {
-		t.Errorf("p1 related[0].id = %v, want %d", relPatch["id"], p2)
-	}
+	assert.Equal(t, float64(p2), relPatch["id"])
 
 	// check p2 sees p1
 	patch2 := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", p2))
 	rel2, ok := patch2["related"].([]any)
-	if !ok {
-		t.Fatal("p2 related field missing")
-	}
-	if len(rel2) != 1 {
-		t.Fatalf("p2 related: got %d, want 1", len(rel2))
-	}
+	require.True(t, ok, "p2 related field missing")
+	require.Len(t, rel2, 1)
 }
 
 func TestRelationNoRelation(t *testing.T) {
@@ -304,10 +270,6 @@ func TestRelationNoRelation(t *testing.T) {
 
 	p := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", patchID))
 	related, ok := p["related"].([]any)
-	if !ok {
-		t.Fatal("related should be an array")
-	}
-	if len(related) != 0 {
-		t.Errorf("related should be empty, got %d", len(related))
-	}
+	require.True(t, ok, "related should be an array")
+	assert.Len(t, related, 0)
 }

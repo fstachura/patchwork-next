@@ -8,22 +8,21 @@ package api
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPatchCreate405(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "POST", "/api/1.4/patches", "", map[string]string{"name": "x"})
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestPatchDelete405(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.authRequest(t, "DELETE", "/api/1.4/patches/1", "", nil)
-	if resp.StatusCode != 405 {
-		t.Errorf("status = %d, want 405", resp.StatusCode)
-	}
+	assert.Equal(t, 405, resp.StatusCode)
 }
 
 func TestPatchDetail(t *testing.T) {
@@ -31,9 +30,7 @@ func TestPatchDetail(t *testing.T) {
 	projID := s.insertProject(t)
 	patchID := s.insertPatch(t, projID, "<detail@test>", "detail patch")
 	p := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", patchID))
-	if p["name"] != "detail patch" {
-		t.Errorf("name = %v", p["name"])
-	}
+	assert.Equal(t, "detail patch", p["name"])
 	assertField(t, p, "diff")
 	assertField(t, p, "headers")
 	assertField(t, p, "hash")
@@ -45,9 +42,7 @@ func TestPatchDetailInvalid(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/patches/invalid")
 	// huma returns 422 for invalid path parameter type
-	if resp.StatusCode != 422 {
-		t.Errorf("status = %d, want 422", resp.StatusCode)
-	}
+	assert.Equal(t, 422, resp.StatusCode)
 }
 
 func TestPatchFilterArchived(t *testing.T) {
@@ -56,13 +51,9 @@ func TestPatchFilterArchived(t *testing.T) {
 	s.insertPatch(t, projID, "<pa@test>", "p")
 
 	items := getList(t, s, "/api/1.4/patches/?archived=false")
-	if len(items) != 1 {
-		t.Errorf("not archived: got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/patches/?archived=true")
-	if len(items) != 0 {
-		t.Errorf("archived: got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchFilterHash(t *testing.T) {
@@ -71,17 +62,11 @@ func TestPatchFilterHash(t *testing.T) {
 	s.insertPatch(t, projID, "<hash@test>", "hash")
 
 	items := getList(t, s, "/api/1.4/patches/?hash=abc123")
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/patches/?hash=ABC123")
-	if len(items) != 1 {
-		t.Errorf("case-insensitive: got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/patches/?hash=nonexistent")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchFilterMsgid(t *testing.T) {
@@ -90,13 +75,9 @@ func TestPatchFilterMsgid(t *testing.T) {
 	s.insertPatch(t, projID, "<msgid-filter@test>", "msgid")
 
 	items := getList(t, s, "/api/1.4/patches/?msgid=msgid-filter@test")
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/patches/?msgid=nonexistent@test")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchFilterState(t *testing.T) {
@@ -105,13 +86,9 @@ func TestPatchFilterState(t *testing.T) {
 	s.insertPatch(t, projID, "<state@test>", "state")
 
 	items := getList(t, s, "/api/1.4/patches/?state=New")
-	if len(items) != 1 {
-		t.Errorf("filter by name: got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/patches/?state=Accepted")
-	if len(items) != 0 {
-		t.Errorf("filter by wrong state: got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchFilterSubmitter(t *testing.T) {
@@ -121,13 +98,9 @@ func TestPatchFilterSubmitter(t *testing.T) {
 
 	personID := s.insertPerson(t, "test@example.com", "Test Author")
 	items := getList(t, s, fmt.Sprintf("/api/1.4/patches/?submitter=%d", personID))
-	if len(items) != 1 {
-		t.Errorf("by id: got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 	items = getList(t, s, "/api/1.4/patches/?submitter=99999")
-	if len(items) != 0 {
-		t.Errorf("wrong id: got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchList(t *testing.T) {
@@ -135,9 +108,7 @@ func TestPatchList(t *testing.T) {
 	projID := s.insertProject(t)
 	patchID := s.insertPatch(t, projID, "<p1@test>", "test patch")
 	items := getList(t, s, "/api/1.4/patches")
-	if len(items) != 1 {
-		t.Fatalf("got %d, want 1", len(items))
-	}
+	require.Len(t, items, 1)
 	p := items[0]
 
 	// value checks matching Python assertSerialized
@@ -161,38 +132,28 @@ func TestPatchList(t *testing.T) {
 	assertValue(t, p, "state", "New")
 
 	seriesList := p["series"].([]any)
-	if len(seriesList) != 0 {
-		t.Errorf("series should be empty, got %d", len(seriesList))
-	}
+	assert.Len(t, seriesList, 0)
 
 	tags := p["tags"].(map[string]any)
-	if len(tags) != 0 {
-		t.Errorf("tags should be empty, got %d", len(tags))
-	}
+	assert.Len(t, tags, 0)
 
 	// related uses omitempty, absent when empty
 	if rel, ok := p["related"]; ok {
 		related := rel.([]any)
-		if len(related) != 0 {
-			t.Errorf("related should be empty, got %d", len(related))
-		}
+		assert.Empty(t, related, "related should be empty")
 	}
 }
 
 func TestPatchListEmpty(t *testing.T) {
 	s := newTestServer(t)
 	items := getList(t, s, "/api/1.4/patches")
-	if len(items) != 0 {
-		t.Errorf("got %d, want 0", len(items))
-	}
+	assert.Len(t, items, 0)
 }
 
 func TestPatchNotFound(t *testing.T) {
 	s := newTestServer(t)
 	resp := s.get(t, "/api/1.4/patches/99999")
-	if resp.StatusCode != 404 {
-		t.Fatalf("status = %d, want 404", resp.StatusCode)
-	}
+	require.Equal(t, 404, resp.StatusCode)
 }
 
 func TestPatchNotFoundUpdate(t *testing.T) {
@@ -204,9 +165,7 @@ func TestPatchNotFoundUpdate(t *testing.T) {
 
 	resp := s.authRequest(t, "PATCH", "/api/1.4/patches/99999", token,
 		map[string]string{"state": "Accepted"})
-	if resp.StatusCode != 404 {
-		t.Errorf("status = %d, want 404", resp.StatusCode)
-	}
+	assert.Equal(t, 404, resp.StatusCode)
 }
 
 func TestPatchSearch(t *testing.T) {
@@ -216,9 +175,7 @@ func TestPatchSearch(t *testing.T) {
 	s.insertPatch(t, projID, "<q2@test>", "other patch")
 
 	items := getList(t, s, "/api/1.4/patches/?q=searchable")
-	if len(items) != 1 {
-		t.Errorf("got %d, want 1", len(items))
-	}
+	assert.Len(t, items, 1)
 }
 
 func TestPatchUpdateAnonymous(t *testing.T) {
@@ -229,9 +186,7 @@ func TestPatchUpdateAnonymous(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", patchID), "",
 		map[string]string{"state": "Accepted"})
-	if resp.StatusCode != 401 {
-		t.Errorf("status = %d, want 401", resp.StatusCode)
-	}
+	assert.Equal(t, 401, resp.StatusCode)
 }
 
 func TestPatchUpdateArchived(t *testing.T) {
@@ -245,15 +200,11 @@ func TestPatchUpdateArchived(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", patchID), token,
 		map[string]bool{"archived": true})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	var result map[string]any
 	decodeJSON(t, resp, &result)
-	if result["archived"] != true {
-		t.Errorf("archived = %v, want true", result["archived"])
-	}
+	assert.Equal(t, true, result["archived"])
 }
 
 func TestPatchUpdateInvalidDelegate(t *testing.T) {
@@ -269,9 +220,7 @@ func TestPatchUpdateInvalidDelegate(t *testing.T) {
 		map[string]any{"delegate": 99999})
 	// Without FK constraints, the update succeeds with a dangling
 	// reference. With FK constraints enabled, the DB rejects it.
-	if resp.StatusCode != 200 && resp.StatusCode != 400 && resp.StatusCode != 500 {
-		t.Errorf("status = %d, want 200, 400, or 500", resp.StatusCode)
-	}
+	assert.Contains(t, []int{200, 400, 500}, resp.StatusCode)
 }
 
 func TestPatchUpdateInvalidState(t *testing.T) {
@@ -285,9 +234,7 @@ func TestPatchUpdateInvalidState(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", patchID), token,
 		map[string]string{"state": "Nonexistent"})
-	if resp.StatusCode != 400 {
-		t.Errorf("status = %d, want 400", resp.StatusCode)
-	}
+	assert.Equal(t, 400, resp.StatusCode)
 }
 
 func TestPatchUpdateMaintainer(t *testing.T) {
@@ -301,15 +248,11 @@ func TestPatchUpdateMaintainer(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", patchID), token,
 		map[string]string{"state": "Accepted"})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	var result map[string]any
 	decodeJSON(t, resp, &result)
-	if result["state"] != "Accepted" {
-		t.Errorf("state = %v, want Accepted", result["state"])
-	}
+	assert.Equal(t, "Accepted", result["state"])
 }
 
 func TestPatchUpdateNonMaintainer(t *testing.T) {
@@ -322,9 +265,7 @@ func TestPatchUpdateNonMaintainer(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", patchID), token,
 		map[string]string{"state": "Accepted"})
-	if resp.StatusCode != 403 {
-		t.Errorf("status = %d, want 403", resp.StatusCode)
-	}
+	assert.Equal(t, 403, resp.StatusCode)
 }
 
 func TestPatchUpdateState(t *testing.T) {
@@ -338,15 +279,11 @@ func TestPatchUpdateState(t *testing.T) {
 	resp := s.authRequest(t, "PATCH",
 		fmt.Sprintf("/api/1.4/patches/%d", patchID), token,
 		map[string]string{"state": "RFC"})
-	if resp.StatusCode != 200 {
-		t.Fatalf("status = %d", resp.StatusCode)
-	}
+	require.Equal(t, 200, resp.StatusCode)
 
 	var result map[string]any
 	decodeJSON(t, resp, &result)
-	if result["state"] != "RFC" {
-		t.Errorf("state = %v, want RFC", result["state"])
-	}
+	assert.Equal(t, "RFC", result["state"])
 }
 
 func TestPatchWebURL(t *testing.T) {
@@ -357,7 +294,5 @@ func TestPatchWebURL(t *testing.T) {
 	p := getOne(t, s, fmt.Sprintf("/api/1.4/patches/%d", patchID))
 	assertField(t, p, "web_url")
 	webURL, _ := p["web_url"].(string)
-	if webURL == "" {
-		t.Error("web_url should not be empty")
-	}
+	assert.NotEmpty(t, webURL, "web_url should not be empty")
 }
