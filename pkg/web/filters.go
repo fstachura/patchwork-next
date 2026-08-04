@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/uptrace/bun"
 
@@ -126,23 +125,4 @@ func removeParam(basePath string, params url.Values, key string) string {
 		return basePath
 	}
 	return basePath + "?" + cp.Encode()
-}
-
-func sanitizeFilename(name string) string {
-	var b strings.Builder
-	for _, r := range name {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z',
-			r >= '0' && r <= '9', r == '-', r == '_', r == '.':
-			b.WriteRune(r)
-		default:
-			b.WriteByte('-')
-		}
-	}
-	s := b.String()
-	s = strings.Trim(s, "-")
-	if s == "" {
-		s = "patch"
-	}
-	return s
 }

@@ -18,6 +18,7 @@ import (
 
 	"github.com/getpatchwork/patchwork/pkg/db"
 	"github.com/getpatchwork/patchwork/pkg/events"
+	"github.com/getpatchwork/patchwork/pkg/mbox"
 )
 
 func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
@@ -597,7 +598,7 @@ func (h *webHandler) PatchRawPage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/x-patch; charset=utf-8")
 	w.Header().Set("Content-Disposition",
-		fmt.Sprintf("attachment; filename=%s.diff", sanitizeFilename(patch.Name)))
+		fmt.Sprintf("attachment; filename=%s.diff", mbox.SanitizeFilename(patch.Name)))
 	_, _ = w.Write([]byte(*patch.Diff))
 }
 
@@ -676,7 +677,7 @@ func (h *webHandler) PatchRawByID(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/x-patch; charset=utf-8")
 	w.Header().Set("Content-Disposition",
-		fmt.Sprintf("attachment; filename=%s.diff", sanitizeFilename(patch.Name)))
+		fmt.Sprintf("attachment; filename=%s.diff", mbox.SanitizeFilename(patch.Name)))
 	_, _ = w.Write([]byte(*patch.Diff))
 }
 
