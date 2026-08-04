@@ -247,6 +247,13 @@ func NewRouter(cfg *config.Config, database *bun.DB, baseURL string, bus db.Even
 	latestPrefix := fmt.Sprintf("/api/%d.%d", latest.Major, latest.Minor)
 	r.Get("/api/*", func(w http.ResponseWriter, r *http.Request) {
 		rest := strings.TrimPrefix(r.URL.Path, "/api")
+		for _, ver := range supportedVersions {
+			vp := fmt.Sprintf("/%d.%d/", ver.Major, ver.Minor)
+			if strings.HasPrefix(rest, vp) {
+				http.NotFound(w, r)
+				return
+			}
+		}
 		http.Redirect(w, r, latestPrefix+rest, http.StatusMovedPermanently)
 	})
 
