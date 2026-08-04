@@ -207,7 +207,7 @@ type SeriesRef struct {
 }
 
 type Patch struct {
-	bun.BaseModel `bun:"table:patch" unique:"msgid,project_id;series_id,number" index:"archived,state_id,delegate_id,date,project_id,submitter_id,name;project_id,archived,date DESC" json:"-"`
+	bun.BaseModel `bun:"table:patch" unique:"msgid,project_id;series_id,number" index:"archived,state_id,delegate_id,date,project_id,submitter_id,name;project_id,archived,state_id,date DESC" json:"-"`
 
 	ID          int       `bun:"id,pk,autoincrement" json:"id"`
 	Msgid       string    `bun:"msgid,notnull" json:"msgid"`
@@ -348,7 +348,7 @@ type BundlePatch struct {
 }
 
 type Check struct {
-	bun.BaseModel `bun:"table:ci_check,alias:ci_check" unique:"patch_id,context,user_id" json:"-"`
+	bun.BaseModel `bun:"table:ci_check,alias:ci_check" unique:"patch_id,context,user_id" index:"patch_id,state" json:"-"`
 
 	ID          int        `bun:"id,pk,autoincrement" json:"id"`
 	PatchID     int        `bun:"patch_id,notnull" json:"-" fk:"patch.id,cascade"`
