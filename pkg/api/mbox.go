@@ -6,7 +6,6 @@
 package api
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -118,12 +117,6 @@ func (h *handler) seriesMbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var parts [][]byte
-	for i := range patches {
-		sub := mbox.BuildPatchSubmission(ctx, q.DB, &patches[i], project.Listemail)
-		parts = append(parts, mbox.Format(sub))
-	}
-
 	name := "series"
 	if series.Name != nil {
 		name = *series.Name
@@ -133,7 +126,10 @@ func (h *handler) seriesMbox(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=%s.patch",
 			mbox.SanitizeFilename(name)))
-	_, _ = w.Write(bytes.Join(parts, []byte("\n")))
+	for i := range patches {
+		sub := mbox.BuildPatchSubmission(ctx, q.DB, &patches[i], project.Listemail)
+		_, _ = w.Write(mbox.Format(sub))
+	}
 }
 
 func (h *handler) bundleMbox(w http.ResponseWriter, r *http.Request) {
@@ -169,15 +165,12 @@ func (h *handler) bundleMbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var parts [][]byte
-	for i := range patches {
-		sub := mbox.BuildPatchSubmission(ctx, q.DB, &patches[i], project.Listemail)
-		parts = append(parts, mbox.Format(sub))
-	}
-
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=bundle-%d-%s.mbox",
 			bundle.ID, mbox.SanitizeFilename(bundle.Name)))
-	_, _ = w.Write(bytes.Join(parts, []byte("\n")))
+	for i := range patches {
+		sub := mbox.BuildPatchSubmission(ctx, q.DB, &patches[i], project.Listemail)
+		_, _ = w.Write(mbox.Format(sub))
+	}
 }

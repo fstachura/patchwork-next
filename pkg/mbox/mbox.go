@@ -114,10 +114,10 @@ func Format(sub Submission) []byte {
 	}
 
 	if Version != "" && !signatureRe.MatchString(body) {
-		body += "-- \npatchwork " + Version + "\n"
+		body += "\n-- \npatchwork " + Version
 	}
 
-	_, _ = w.Write([]byte(body))
+	_, _ = w.Write([]byte(strings.TrimRight(body, "\n")))
 	mw.Close()
 
 	return buf.Bytes()

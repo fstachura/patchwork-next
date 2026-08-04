@@ -6,7 +6,6 @@
 package web
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -139,12 +138,6 @@ func (h *webHandler) SeriesMbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var parts [][]byte
-	for i := range patches {
-		sub := mbox.BuildPatchSubmission(ctx, q.DB, &patches[i], project.Listemail)
-		parts = append(parts, mbox.Format(sub))
-	}
-
 	name := "series"
 	if series.Name != nil {
 		name = *series.Name
@@ -153,7 +146,10 @@ func (h *webHandler) SeriesMbox(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=%s.patch", mbox.SanitizeFilename(name)))
-	_, _ = w.Write(bytes.Join(parts, []byte("\n")))
+	for i := range patches {
+		sub := mbox.BuildPatchSubmission(ctx, q.DB, &patches[i], project.Listemail)
+		_, _ = w.Write(mbox.Format(sub))
+	}
 }
 
 func (h *webHandler) seriesPatchMbox(w http.ResponseWriter, r *http.Request, patch db.Patch, project db.Project, seriesParam string) {
@@ -182,19 +178,15 @@ func (h *webHandler) seriesPatchMbox(w http.ResponseWriter, r *http.Request, pat
 			Scan(ctx)
 	}
 
-	var parts [][]byte
-	for i := range deps {
-		sub := mbox.BuildPatchSubmission(ctx, q.DB, &deps[i], project.Listemail)
-		parts = append(parts, mbox.Format(sub))
-	}
-
-	sub := mbox.BuildPatchSubmission(ctx, q.DB, &patch, project.Listemail)
-	parts = append(parts, mbox.Format(sub))
-
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=%s.patch", mbox.SanitizeFilename(patch.Name)))
-	_, _ = w.Write(bytes.Join(parts, []byte("\n")))
+	for i := range deps {
+		sub := mbox.BuildPatchSubmission(ctx, q.DB, &deps[i], project.Listemail)
+		_, _ = w.Write(mbox.Format(sub))
+	}
+	sub := mbox.BuildPatchSubmission(ctx, q.DB, &patch, project.Listemail)
+	_, _ = w.Write(mbox.Format(sub))
 }
 
 func (h *webHandler) BundleMbox(w http.ResponseWriter, r *http.Request) {
@@ -238,17 +230,14 @@ func (h *webHandler) BundleMbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var parts [][]byte
-	for i := range patches {
-		sub := mbox.BuildPatchSubmission(ctx, q.DB, &patches[i], project.Listemail)
-		parts = append(parts, mbox.Format(sub))
-	}
-
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=bundle-%d-%s.mbox",
 			bundle.ID, mbox.SanitizeFilename(bundle.Name)))
-	_, _ = w.Write(bytes.Join(parts, []byte("\n")))
+	for i := range patches {
+		sub := mbox.BuildPatchSubmission(ctx, q.DB, &patches[i], project.Listemail)
+		_, _ = w.Write(mbox.Format(sub))
+	}
 }
 
 func (h *webHandler) CommentRedirect(w http.ResponseWriter, r *http.Request) {
