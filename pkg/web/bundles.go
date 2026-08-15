@@ -121,7 +121,10 @@ func (h *webHandler) BundleDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	populateWebPatchTags(q, patches)
+	if err = loadWebPatchDetails(q, patches); err != nil {
+		serverErrorPage(w, "load patch details", err)
+		return
+	}
 
 	var owner db.User
 	if q.DB.NewSelect().Model(&owner).Where("id = ?", bundle.OwnerID).Scan(q.Ctx) == nil {

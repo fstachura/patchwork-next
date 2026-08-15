@@ -167,58 +167,6 @@ func loadPatchRelated(ctx context.Context, database bun.IDB, patches []db.Patch)
 	}
 }
 
-func loadCombinedCheck(ctx context.Context, database bun.IDB, patches []db.Patch) {
-	if len(patches) == 0 {
-		return
-	}
-	ids := make([]int, len(patches))
-	for i := range patches {
-		ids[i] = patches[i].ID
-	}
-
-	type checkRow struct {
-		PatchID int `bun:"patch_id"`
-		State   int `bun:"state"`
-	}
-	var rows []checkRow
-	if err := database.NewSelect().
-		Model((*db.Check)(nil)).
-		Column("patch_id", "state").
-		Distinct().
-		Where("patch_id IN ?", bun.Tuple(dedup(ids))).
-		Scan(ctx, &rows); err != nil {
-		log.Errorf("load combined check: %v", err)
-	}
-
-	statesByPatch := make(map[int][]int)
-	for _, r := range rows {
-		statesByPatch[r.PatchID] = append(statesByPatch[r.PatchID], r.State)
-	}
-
-	for i := range patches {
-		states := statesByPatch[patches[i].ID]
-		if len(states) == 0 {
-			continue
-		}
-		combined := "success"
-		for _, s := range states {
-			switch db.CheckState(s) {
-			case db.CheckFail:
-				combined = "fail"
-			case db.CheckWarning:
-				if combined != "fail" {
-					combined = "warning"
-				}
-			case db.CheckPending:
-				if combined != "fail" && combined != "warning" {
-					combined = "pending"
-				}
-			}
-		}
-		patches[i].CombinedCheck = &combined
-	}
-}
-
 func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series []db.Series) {
 	for i := range series {
 		s := &series[i]

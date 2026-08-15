@@ -241,7 +241,6 @@ type Patch struct {
 	ListArchiveURL string         `bun:"-" json:"list_archive_url,omitempty"`
 	CommentsURL    string         `bun:"-" json:"comments,omitempty"`
 	ChecksURL      string         `bun:"-" json:"checks,omitempty"`
-	CombinedCheck  *string        `bun:"-" json:"check,omitempty"`
 	CheckCounts    [4]int         `bun:"-" json:"-"`
 	Tags           map[string]int `bun:"-" json:"tags"`
 	SeriesList     []SeriesRef    `bun:"-" json:"series"`

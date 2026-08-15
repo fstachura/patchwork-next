@@ -297,7 +297,9 @@ func (h *handler) GetPatch(
 func loadPatchDetails(q *db.Queries, patches []db.Patch) error {
 	loadPatchTags(ctx, idb, patches)
 	loadPatchSeries(ctx, idb, patches)
-	loadCombinedCheck(ctx, idb, patches)
+	if err := q.LoadPatchCheckCounts(patches); err != nil {
+		return err
+	}
 	loadPatchRelated(ctx, idb, patches)
 	return nil
 }
@@ -368,7 +370,6 @@ func patchToListResponse(p *db.Patch, base string) PatchListResponse {
 		Mbox:      fmt.Sprintf("%s/patches/%d/mbox", base, p.ID),
 		Comments:  strp(fmt.Sprintf("%s/patches/%d/comments", base, p.ID)),
 		Checks:    fmt.Sprintf("%s/patches/%d/checks", base, p.ID),
-		Check:     "pending",
 		Tags:      p.Tags,
 		Series:    []SeriesEmbedded{},
 		Related:   []PatchEmbedded{},
@@ -393,9 +394,7 @@ func patchToListResponse(p *db.Patch, base string) PatchListResponse {
 		d := userToEmbedded(p.Delegate, base)
 		r.Delegate = &d
 	}
-	if p.CombinedCheck != nil {
-		r.Check = *p.CombinedCheck
-	}
+	r.Check = p.CombinedCheckState()
 	if p.Tags == nil {
 		r.Tags = map[string]int{}
 	}

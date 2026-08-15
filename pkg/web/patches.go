@@ -79,7 +79,10 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	populateWebPatchTags(q, patches)
+	if err = loadWebPatchDetails(q, patches); err != nil {
+		serverErrorPage(w, "load patch details", err)
+		return
+	}
 
 	var tagAbbrevs []string
 	err = q.DB.NewSelect().Model((*db.Tag)(nil)).Column("abbrev").
@@ -321,6 +324,13 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 		notFoundPage(w)
 		return
 	}
+
+	patches := []db.Patch{patch}
+	if err = loadWebPatchDetails(q, patches); err != nil {
+		serverErrorPage(w, "load patch details", err)
+		return
+	}
+	patch = patches[0]
 
 	var series *db.Series
 	if patch.SeriesID != nil {
@@ -709,7 +719,7 @@ func applySort(sq *bun.SelectQuery, sort string) *bun.SelectQuery {
 	return sq.OrderExpr(col + " ASC")
 }
 
-func populateWebPatchTags(q *db.Queries, patches []db.Patch) {
+func loadWebPatchDetails(q *db.Queries, patches []db.Patch) error {
 	if len(patches) == 0 {
 		return
 	}
@@ -740,34 +750,8 @@ func populateWebPatchTags(q *db.Queries, patches []db.Patch) {
 		tagMap[r.PatchID][r.Abbrev] = r.Count
 	}
 
-	type checkRow struct {
-		PatchID int `bun:"patch_id"`
-		State   int `bun:"state"`
-		Count   int `bun:"count"`
+	if err := q.LoadPatchCheckCounts(patches); err != nil {
+		return err
 	}
-	var checkRows []checkRow
-	q.DB.NewSelect().
-		Model((*db.Check)(nil)).
-		Column("patch_id", "state").
-		ColumnExpr("count(*) AS count").
-		Where("patch_id IN ?", bun.Tuple(ids)).
-		GroupExpr("patch_id, state").
-		Scan(q.Ctx, &checkRows)
-
-	checkMap := make(map[int][4]int)
-	for _, r := range checkRows {
-		c := checkMap[r.PatchID]
-		if r.State >= 0 && r.State < 4 {
-			c[r.State] = r.Count
-		}
-		checkMap[r.PatchID] = c
-	}
-
-	for i := range patches {
-		patches[i].Tags = tagMap[patches[i].ID]
-		if patches[i].Tags == nil {
-			patches[i].Tags = map[string]int{}
-		}
-		patches[i].CheckCounts = checkMap[patches[i].ID]
-	}
+	return nil
 }

@@ -89,7 +89,10 @@ func (h *webHandler) todoList(w http.ResponseWriter, r *http.Request) {
 		OrderExpr("date DESC").
 		Scan(q.Ctx)
 
-	populateWebPatchTags(q, patches)
+	if err := loadWebPatchDetails(q, patches); err != nil {
+		serverErrorPage(w, "load patch details", err)
+		return
+	}
 
 	todoListPage(pc, *project, patches).Render(ctx, w)
 }
