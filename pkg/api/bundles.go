@@ -142,7 +142,10 @@ func (h *handler) GetBundle(
 	}
 
 	bundles := []db.Bundle{bundle}
-	loadBundlePatches(ctx, idb, bundles)
+	if err := db.GetQueries(ctx).LoadBundlePatches(bundles); err != nil {
+		log.Errorf("load bundle patches: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	return &GetBundleOutput{
 		Body: bundleToResponse(&bundles[0], base),
@@ -203,7 +206,10 @@ func (h *handler) CreateBundle(
 	}
 
 	bundles := []db.Bundle{bundle}
-	loadBundlePatches(ctx, q.DB, bundles)
+	if err := q.LoadBundlePatches(bundles); err != nil {
+		log.Errorf("load bundle patches: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	base := h.apiBase(ctx)
 	return &GetBundleOutput{
@@ -277,7 +283,10 @@ func (h *handler) UpdateBundle(
 	}
 
 	bundles := []db.Bundle{bundle}
-	loadBundlePatches(ctx, idb, bundles)
+	if err := db.GetQueries(ctx).LoadBundlePatches(bundles); err != nil {
+		log.Errorf("load bundle patches: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	base := h.apiBase(ctx)
 	return &GetBundleOutput{

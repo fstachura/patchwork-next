@@ -455,23 +455,6 @@ func listArchiveURL(project *db.Project, msgid string) string {
 	return strings.ReplaceAll(project.ListArchiveURLFormat, "{}", url.PathEscape(bare))
 }
 
-func loadBundlePatches(ctx context.Context, database bun.IDB, bundles []db.Bundle) {
-	for i := range bundles {
-		var patches []db.Patch
-		if err := database.NewSelect().
-			Model(&patches).
-			Join("JOIN bundle_patch AS bp ON bp.patch_id = patch.id").
-			Where("bp.bundle_id = ?", bundles[i].ID).
-			Scan(ctx); err != nil {
-			log.Errorf("load bundle patches: %v", err)
-		}
-		if patches == nil {
-			patches = []db.Patch{}
-		}
-		bundles[i].BundlePatches = patches
-	}
-}
-
 func updateRelated(
 	ctx context.Context, database bun.IDB,
 	user *db.User, patch *db.Patch, relatedIDs []int,
