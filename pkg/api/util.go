@@ -114,17 +114,13 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 			s.PreviousSeries = &u
 		}
 
-		var nextIDs []int
-		if err := database.NewSelect().
-			Model((*db.Series)(nil)).
-			Column("id").
-			Where("previous_series_id = ?", s.ID).
-			Scan(ctx, &nextIDs); err != nil {
+		nextSeriesList, err := q.ListNextSeries(s.ID)
+		if err != nil {
 			log.Errorf("load next series: %v", err)
 		}
-		s.NextSeries = make([]string, len(nextIDs))
-		for j, id := range nextIDs {
-			s.NextSeries[j] = fmt.Sprintf("%s/series/%d", base, id)
+		s.NextSeries = make([]string, len(nextSeriesList))
+		for j, ns := range nextSeriesList {
+			s.NextSeries[j] = fmt.Sprintf("%s/series/%d", base, ns.ID)
 		}
 	}
 }

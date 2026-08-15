@@ -444,11 +444,11 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 				prevSeries = &ps
 			}
 		}
-		q.DB.NewSelect().Model(&nextSeries).
-			Column("id", "version").
-			Where("previous_series_id = ?", series.ID).
-			OrderExpr("version ASC").
-			Scan(q.Ctx)
+		nextSeries, err = q.ListNextSeries(series.ID)
+		if err != nil {
+			serverErrorPage(w, "list next series", err)
+			return
+		}
 	}
 
 	data := patchDetailData{

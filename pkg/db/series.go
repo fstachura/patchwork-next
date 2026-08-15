@@ -204,6 +204,15 @@ func (q *Queries) GetSeriesMetadata(seriesID int) (map[string]string, error) {
 	return m, err
 }
 
+func (q *Queries) ListNextSeries(seriesID int) ([]Series, error) {
+	var series []Series
+	err := q.DB.NewSelect().Model(&series).
+		Where("previous_series_id = ?", seriesID).
+		OrderExpr("version ASC").
+		Scan(q.Ctx)
+	return series, err
+}
+
 func (q *Queries) LoadPatchSeries(patches []Patch) error {
 	var seriesIDs []int
 	for i := range patches {
