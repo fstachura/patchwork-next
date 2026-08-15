@@ -96,10 +96,10 @@ func (h *handler) ListPatches(
 		log.Errorf("list patches: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
-	loadPatchTags(ctx, idb, patches)
-	loadPatchSeries(ctx, idb, patches)
-	loadCombinedCheck(ctx, idb, patches)
-	loadPatchRelated(ctx, idb, patches)
+	if err := loadPatchDetails(db.GetQueries(ctx), patches); err != nil {
+		log.Errorf("load patch details: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	resp := &ListPatchesOutput{
 		Link: buildLinkHeader(input.Page, perPage, total),
@@ -260,10 +260,10 @@ func (h *handler) UpdatePatch(
 	}
 
 	patches := []db.Patch{patch}
-	loadPatchTags(ctx, q.DB, patches)
-	loadPatchSeries(ctx, q.DB, patches)
-	loadCombinedCheck(ctx, q.DB, patches)
-	loadPatchRelated(ctx, q.DB, patches)
+	if err := loadPatchDetails(q, patches); err != nil {
+		log.Errorf("load patch details: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	return &GetPatchOutput{
 		Body: patchToDetailResponse(&patches[0], base),
@@ -284,14 +284,22 @@ func (h *handler) GetPatch(
 	}
 
 	patches := []db.Patch{patch}
-	loadPatchTags(ctx, idb, patches)
-	loadPatchSeries(ctx, idb, patches)
-	loadCombinedCheck(ctx, idb, patches)
-	loadPatchRelated(ctx, idb, patches)
+	if err := loadPatchDetails(db.GetQueries(ctx), patches); err != nil {
+		log.Errorf("load patch details: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	return &GetPatchOutput{
 		Body: patchToDetailResponse(&patches[0], base),
 	}, nil
+}
+
+func loadPatchDetails(q *db.Queries, patches []db.Patch) error {
+	loadPatchTags(ctx, idb, patches)
+	loadPatchSeries(ctx, idb, patches)
+	loadCombinedCheck(ctx, idb, patches)
+	loadPatchRelated(ctx, idb, patches)
+	return nil
 }
 
 func applyPatchFilters(q *bun.SelectQuery, input *ListPatchesInput) *bun.SelectQuery {
