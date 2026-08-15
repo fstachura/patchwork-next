@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/uptrace/bun"
 
 	"github.com/getpatchwork/patchwork/pkg/db"
 )
@@ -51,12 +50,7 @@ func (h *webHandler) CoverDetailPage(w http.ResponseWriter, r *http.Request) {
 	metadata := make(map[string]string)
 
 	if series != nil {
-		var sPatches []db.Patch
-		err = q.DB.NewSelect().Model(&sPatches).
-			Column("id", "msgid", "name").
-			Where("series_id = ?", series.ID).
-			OrderBy("number", bun.OrderAsc).
-			Scan(q.Ctx)
+		sPatches, err := q.ListSeriesPatches(series.ID)
 		if err != nil {
 			serverErrorPage(w, "list series patches", err)
 			return
@@ -68,16 +62,10 @@ func (h *webHandler) CoverDetailPage(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
-		var rows []db.SeriesMetadata
-		err = q.DB.NewSelect().Model(&rows).
-			Where("series_id = ?", series.ID).
-			Scan(q.Ctx)
+		metadata, err = q.GetSeriesMetadata(series.ID)
 		if err != nil {
 			serverErrorPage(w, "list series metadata", err)
 			return
-		}
-		for _, r := range rows {
-			metadata[r.Key] = r.Value
 		}
 	}
 

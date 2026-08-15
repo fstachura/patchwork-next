@@ -180,6 +180,30 @@ func (q *Queries) UpdateSeriesPreviousSeries(id int, previousSeriesID *int) erro
 	return err
 }
 
+func (q *Queries) ListSeriesPatches(seriesID int) ([]Patch, error) {
+	var patches []Patch
+	err := q.DB.NewSelect().Model(&patches).
+		Where("series_id = ?", seriesID).
+		OrderExpr("number ASC").
+		Scan(q.Ctx)
+	return patches, err
+}
+
+func (q *Queries) GetSeriesMetadata(seriesID int) (map[string]string, error) {
+	var rows []SeriesMetadata
+	err := q.DB.NewSelect().Model(&rows).
+		Where("series_id = ?", seriesID).
+		Scan(q.Ctx)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]string, len(rows))
+	for _, r := range rows {
+		m[r.Key] = r.Value
+	}
+	return m, err
+}
+
 func (q *Queries) LoadPatchSeries(patches []Patch) error {
 	var seriesIDs []int
 	for i := range patches {

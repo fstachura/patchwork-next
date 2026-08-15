@@ -67,11 +67,10 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 			}
 		}
 
-		var patches []db.Patch
-		if err := database.NewSelect().Model(&patches).
-			Where("series_id = ?", s.ID).
-			OrderExpr("number ASC").
-			Scan(ctx); err != nil {
+		q := &db.Queries{Ctx: ctx, DB: database}
+
+		patches, err := q.ListSeriesPatches(s.ID)
+		if err != nil {
 			log.Errorf("load series patches: %v", err)
 		}
 		if patches == nil {
@@ -79,15 +78,9 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 		}
 		s.Patches = patches
 
-		var meta []db.SeriesMetadata
-		if err := database.NewSelect().Model(&meta).
-			Where("series_id = ?", s.ID).
-			Scan(ctx); err != nil {
+		s.Metadata, err = q.GetSeriesMetadata(s.ID)
+		if err != nil {
 			log.Errorf("load series metadata: %v", err)
-		}
-		s.Metadata = make(map[string]string, len(meta))
-		for _, m := range meta {
-			s.Metadata[m.Key] = m.Value
 		}
 
 		var depIDs []int

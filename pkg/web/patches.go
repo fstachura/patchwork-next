@@ -358,31 +358,17 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 
 	var metadata map[string]string
 	if series != nil {
-		var rows []db.SeriesMetadata
-		err = q.DB.NewSelect().Model(&rows).
-			Where("series_id = ?", series.ID).
-			Scan(q.Ctx)
+		metadata, err = q.GetSeriesMetadata(series.ID)
 		if err != nil {
 			serverErrorPage(w, "list series metadata", err)
 			return
-		}
-		if len(rows) > 0 {
-			metadata = make(map[string]string)
-			for _, r := range rows {
-				metadata[r.Key] = r.Value
-			}
 		}
 	}
 
 	var seriesPatches []seriesPatchRef
 	var cover *db.Cover
 	if series != nil {
-		var sPatches []db.Patch
-		err = q.DB.NewSelect().Model(&sPatches).
-			Column("id", "msgid", "name").
-			Where("series_id = ?", series.ID).
-			OrderBy("number", bun.OrderAsc).
-			Scan(q.Ctx)
+		sPatches, err := q.ListSeriesPatches(series.ID)
 		if err != nil {
 			serverErrorPage(w, "list series patches", err)
 			return
