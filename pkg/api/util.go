@@ -45,41 +45,6 @@ func personToEmbedded(p *db.Person, base string) PersonEmbedded {
 	}
 }
 
-func loadProjectMaintainers(ctx context.Context, database bun.IDB, projects []db.Project) {
-	if len(projects) == 0 {
-		return
-	}
-	projectIDs := make([]int, len(projects))
-	for i := range projects {
-		projectIDs[i] = projects[i].ID
-	}
-
-	type maintainerRow struct {
-		ProjectID int `bun:"project_id"`
-		db.User
-	}
-	var rows []maintainerRow
-	if err := database.NewSelect().
-		Model((*db.ProjectMaintainer)(nil)).
-		ColumnExpr("project_maintainer.project_id, u.*").
-		Join("JOIN auth_user AS u ON u.id = project_maintainer.user_id").
-		Where("project_maintainer.project_id IN ?", bun.Tuple(projectIDs)).
-		Scan(ctx, &rows); err != nil {
-		log.Errorf("load project maintainers: %v", err)
-	}
-
-	byProject := make(map[int][]db.User)
-	for _, r := range rows {
-		byProject[r.ProjectID] = append(byProject[r.ProjectID], r.User)
-	}
-	for i := range projects {
-		projects[i].Maintainers = byProject[projects[i].ID]
-		if projects[i].Maintainers == nil {
-			projects[i].Maintainers = []db.User{}
-		}
-	}
-}
-
 func dedup(ids []int) []int {
 	seen := make(map[int]bool, len(ids))
 	result := make([]int, 0, len(ids))

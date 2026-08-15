@@ -5,6 +5,8 @@
 
 package db
 
+import "github.com/uptrace/bun"
+
 func (q *Queries) GetProjectByLinkname(linkname string) (*Project, error) {
 	var p Project
 	err := q.DB.NewSelect().Model(&p).
@@ -45,6 +47,44 @@ func (q *Queries) ListProjectMaintainers(projectID int) ([]User, error) {
 		OrderExpr("auth_user.username ASC").
 		Scan(q.Ctx)
 	return users, err
+}
+
+func (q *Queries) LoadProjectMaintainers(projects []Project) error {
+	if len(projects) == 0 {
+		return nil
+	}
+	ids := make([]int, len(projects))
+	byID := make(map[int]*Project, len(projects))
+	for i := range projects {
+		ids[i] = projects[i].ID
+		byID[projects[i].ID] = &projects[i]
+	}
+
+	type row struct {
+		ProjectID int `bun:"project_id"`
+		User
+	}
+	var rows []row
+	if err := q.DB.NewSelect().
+		Model((*ProjectMaintainer)(nil)).
+		ColumnExpr("project_maintainer.project_id, u.*").
+		Join("JOIN auth_user AS u ON u.id = project_maintainer.user_id").
+		Where("project_maintainer.project_id IN ?", bun.Tuple(ids)).
+		Scan(q.Ctx, &rows); err != nil {
+		return err
+	}
+
+	for _, r := range rows {
+		if p, ok := byID[r.ProjectID]; ok {
+			p.Maintainers = append(p.Maintainers, r.User)
+		}
+	}
+	for i := range projects {
+		if projects[i].Maintainers == nil {
+			projects[i].Maintainers = []User{}
+		}
+	}
+	return nil
 }
 
 func (q *Queries) IsMaintainer(user *User, projectID int) bool {

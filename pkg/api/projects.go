@@ -133,7 +133,10 @@ func (h *handler) ListProjects(
 		log.Errorf("list projects: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
-	loadProjectMaintainers(ctx, idb, projects)
+	if err := db.GetQueries(ctx).LoadProjectMaintainers(projects); err != nil {
+		log.Errorf("load project maintainers: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	resp := &ListProjectsOutput{
 		Link: buildLinkHeader(input.Page, perPage, total),
@@ -220,7 +223,10 @@ func (h *handler) UpdateProject(
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
 	projects := []db.Project{project}
-	loadProjectMaintainers(ctx, q.DB, projects)
+	if err := q.LoadProjectMaintainers(projects); err != nil {
+		log.Errorf("load project maintainers: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	return &GetProjectOutput{
 		Body: projectToResponse(&projects[0], base),
@@ -252,7 +258,10 @@ func (h *handler) GetProject(
 	}
 
 	projects := []db.Project{project}
-	loadProjectMaintainers(ctx, h.db, projects)
+	if err := db.New(ctx, h.db).LoadProjectMaintainers(projects); err != nil {
+		log.Errorf("load project maintainers: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	return &GetProjectOutput{
 		Body: projectToResponse(&projects[0], base),
