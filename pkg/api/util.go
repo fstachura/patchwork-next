@@ -57,46 +57,6 @@ func dedup(ids []int) []int {
 	return result
 }
 
-func loadPatchTags(ctx context.Context, database bun.IDB, patches []db.Patch) {
-	if len(patches) == 0 {
-		return
-	}
-	ids := make([]int, len(patches))
-	for i := range patches {
-		ids[i] = patches[i].ID
-	}
-
-	type tagRow struct {
-		PatchID int    `bun:"patch_id"`
-		Abbrev  string `bun:"abbrev"`
-		Count   int    `bun:"count"`
-	}
-	var rows []tagRow
-	if err := database.NewSelect().
-		Model((*db.PatchTag)(nil)).
-		ColumnExpr("patch_tag.patch_id, tag.abbrev, patch_tag.count").
-		Join("JOIN tag ON tag.id = patch_tag.tag_id").
-		Where("patch_tag.patch_id IN ?", bun.Tuple(dedup(ids))).
-		Scan(ctx, &rows); err != nil {
-		log.Errorf("load patch tags: %v", err)
-	}
-
-	tagMap := make(map[int]map[string]int)
-	for _, r := range rows {
-		if tagMap[r.PatchID] == nil {
-			tagMap[r.PatchID] = make(map[string]int)
-		}
-		tagMap[r.PatchID][r.Abbrev] = int(r.Count)
-	}
-
-	for i := range patches {
-		patches[i].Tags = tagMap[patches[i].ID]
-		if patches[i].Tags == nil {
-			patches[i].Tags = map[string]int{}
-		}
-	}
-}
-
 func loadPatchSeries(ctx context.Context, database bun.IDB, patches []db.Patch) {
 	var seriesIDs []int
 	for i := range patches {

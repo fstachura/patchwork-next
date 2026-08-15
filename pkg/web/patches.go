@@ -720,36 +720,9 @@ func applySort(sq *bun.SelectQuery, sort string) *bun.SelectQuery {
 }
 
 func loadWebPatchDetails(q *db.Queries, patches []db.Patch) error {
-	if len(patches) == 0 {
-		return
+	if err := q.LoadPatchTags(patches); err != nil {
+		return err
 	}
-
-	ids := make([]int, len(patches))
-	for i := range patches {
-		ids[i] = patches[i].ID
-	}
-
-	type tagRow struct {
-		PatchID int    `bun:"patch_id"`
-		Abbrev  string `bun:"abbrev"`
-		Count   int    `bun:"count"`
-	}
-	var tagRows []tagRow
-	q.DB.NewSelect().
-		Model((*db.PatchTag)(nil)).
-		ColumnExpr("patch_tag.patch_id, t.abbrev, patch_tag.count").
-		Join("JOIN tag AS t ON t.id = patch_tag.tag_id").
-		Where("patch_tag.patch_id IN ?", bun.Tuple(ids)).
-		Scan(q.Ctx, &tagRows)
-
-	tagMap := make(map[int]map[string]int)
-	for _, r := range tagRows {
-		if tagMap[r.PatchID] == nil {
-			tagMap[r.PatchID] = make(map[string]int)
-		}
-		tagMap[r.PatchID][r.Abbrev] = r.Count
-	}
-
 	if err := q.LoadPatchCheckCounts(patches); err != nil {
 		return err
 	}

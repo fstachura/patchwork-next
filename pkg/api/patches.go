@@ -295,7 +295,9 @@ func (h *handler) GetPatch(
 }
 
 func loadPatchDetails(q *db.Queries, patches []db.Patch) error {
-	loadPatchTags(ctx, idb, patches)
+	if err := q.LoadPatchTags(patches); err != nil {
+		return err
+	}
 	loadPatchSeries(ctx, idb, patches)
 	if err := q.LoadPatchCheckCounts(patches); err != nil {
 		return err
