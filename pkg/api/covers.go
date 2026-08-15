@@ -78,7 +78,10 @@ func (h *handler) ListCovers(
 		log.Errorf("list covers: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
-	loadCoverSeries(ctx, idb, covers)
+	if err := db.GetQueries(ctx).LoadCoverSeries(covers); err != nil {
+		log.Errorf("load cover series: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	resp := &ListCoversOutput{
 		Link: buildLinkHeader(input.Page, perPage, total),
@@ -112,7 +115,10 @@ func (h *handler) GetCover(
 	}
 
 	covers := []db.Cover{cover}
-	loadCoverSeries(ctx, idb, covers)
+	if err := db.GetQueries(ctx).LoadCoverSeries(covers); err != nil {
+		log.Errorf("load cover series: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
 
 	return &GetCoverOutput{
 		Body: coverToDetailResponse(&covers[0], base),

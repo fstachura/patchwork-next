@@ -254,41 +254,6 @@ func loadCombinedCheck(ctx context.Context, database bun.IDB, patches []db.Patch
 	}
 }
 
-func loadCoverSeries(ctx context.Context, database bun.IDB, covers []db.Cover) {
-	if len(covers) == 0 {
-		return
-	}
-	coverIDs := make([]int, len(covers))
-	for i := range covers {
-		coverIDs[i] = covers[i].ID
-	}
-
-	var series []db.Series
-	if err := database.NewSelect().Model(&series).
-		Where("cover_letter_id IN ?", bun.Tuple(dedup(coverIDs))).
-		Scan(ctx); err != nil {
-		log.Errorf("load cover series: %v", err)
-	}
-
-	byCover := make(map[int]*db.Series)
-	for i := range series {
-		if series[i].CoverLetterID != nil {
-			byCover[*series[i].CoverLetterID] = &series[i]
-		}
-	}
-
-	for i := range covers {
-		if s, ok := byCover[covers[i].ID]; ok {
-			covers[i].SeriesList = []db.SeriesRef{
-				{ID: s.ID, Name: s.Name},
-			}
-		}
-		if covers[i].SeriesList == nil {
-			covers[i].SeriesList = []db.SeriesRef{}
-		}
-	}
-}
-
 func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series []db.Series) {
 	for i := range series {
 		s := &series[i]

@@ -180,6 +180,41 @@ func (q *Queries) UpdateSeriesPreviousSeries(id int, previousSeriesID *int) erro
 	return err
 }
 
+func (q *Queries) LoadCoverSeries(covers []Cover) error {
+	if len(covers) == 0 {
+		return nil
+	}
+	coverIDs := make([]int, len(covers))
+	for i := range covers {
+		coverIDs[i] = covers[i].ID
+	}
+
+	var series []Series
+	if err := q.DB.NewSelect().Model(&series).
+		Where("cover_letter_id IN ?", bun.Tuple(coverIDs)).
+		Scan(q.Ctx); err != nil {
+		return err
+	}
+
+	byCover := make(map[int]*Series)
+	for i := range series {
+		if series[i].CoverLetterID != nil {
+			byCover[*series[i].CoverLetterID] = &series[i]
+		}
+	}
+	for i := range covers {
+		if s, ok := byCover[covers[i].ID]; ok {
+			covers[i].SeriesList = []SeriesRef{
+				{ID: s.ID, Name: s.Name},
+			}
+		}
+		if covers[i].SeriesList == nil {
+			covers[i].SeriesList = []SeriesRef{}
+		}
+	}
+	return nil
+}
+
 func (q *Queries) AddSeriesDependencies(fromSeriesID, toSeriesID int) error {
 	_, err := q.DB.NewInsert().Model(&SeriesDependencies{
 		FromSeriesID: fromSeriesID,
