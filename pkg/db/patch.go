@@ -5,6 +5,8 @@
 
 package db
 
+import "github.com/uptrace/bun"
+
 func (q *Queries) GetPatchByID(id int) (*Patch, error) {
 	var p Patch
 	err := q.DB.NewSelect().Model(&p).
@@ -93,4 +95,44 @@ func (q *Queries) CountPatchesInSeries(seriesID int) (int, error) {
 	return q.DB.NewSelect().Model((*Patch)(nil)).
 		Where("series_id = ?", seriesID).
 		Count(q.Ctx)
+}
+
+func (q *Queries) LoadPatchRelated(patches []Patch) error {
+	var relatedIDs []int
+	for i := range patches {
+		if patches[i].RelatedID != nil {
+			relatedIDs = append(relatedIDs, *patches[i].RelatedID)
+		}
+	}
+	byRelID := make(map[int][]PatchRef)
+	if len(relatedIDs) > 0 {
+		var related []Patch
+		if err := q.DB.NewSelect().Model(&related).
+			Column("id", "name", "related_id").
+			Where("related_id IN ?", bun.Tuple(relatedIDs)).
+			Scan(q.Ctx); err != nil {
+			return err
+		}
+		for _, r := range related {
+			if r.RelatedID != nil {
+				byRelID[*r.RelatedID] = append(
+					byRelID[*r.RelatedID],
+					PatchRef{ID: r.ID, Name: r.Name},
+				)
+			}
+		}
+	}
+	for i := range patches {
+		if patches[i].RelatedID != nil {
+			for _, ref := range byRelID[*patches[i].RelatedID] {
+				if ref.ID != patches[i].ID {
+					patches[i].Related = append(patches[i].Related, ref)
+				}
+			}
+		}
+		if patches[i].Related == nil {
+			patches[i].Related = []PatchRef{}
+		}
+	}
+	return nil
 }

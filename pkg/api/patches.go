@@ -298,11 +298,15 @@ func loadPatchDetails(q *db.Queries, patches []db.Patch) error {
 	if err := q.LoadPatchTags(patches); err != nil {
 		return err
 	}
-	loadPatchSeries(ctx, idb, patches)
+	if err := q.LoadPatchSeries(patches); err != nil {
+		return err
+	}
 	if err := q.LoadPatchCheckCounts(patches); err != nil {
 		return err
 	}
-	loadPatchRelated(ctx, idb, patches)
+	if err := q.LoadPatchRelated(patches); err != nil {
+		return err
+	}
 	return nil
 }
 
