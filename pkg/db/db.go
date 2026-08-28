@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql" // register mysql driver
 	_ "github.com/jackc/pgx/v5/stdlib" // register pgx driver
@@ -106,6 +107,8 @@ func Open(cfg *config.Config) (*bun.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sql.Open(%s): %w", driver, err)
 	}
+
+	conn.SetConnMaxLifetime(10 * time.Second)
 
 	return bun.NewDB(conn, dialect), nil
 }
