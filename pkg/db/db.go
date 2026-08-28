@@ -124,10 +124,11 @@ func WithBus(ctx context.Context, bus EventBus) context.Context {
 }
 
 func GetBus(ctx context.Context) EventBus {
-	if bus, ok := ctx.Value(busCtxKey{}).(EventBus); ok {
-		return bus
+	bus := ctx.Value(busCtxKey{}).(EventBus)
+	if bus == nil {
+		panic("Queries.Begin() context has no event bus value")
 	}
-	return nil
+	return bus
 }
 
 // Queries provides typed database access methods. It wraps a bun.IDB

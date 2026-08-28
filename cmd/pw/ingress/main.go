@@ -63,7 +63,7 @@ func (c *CLI) Run(ctx *pw.Context) error {
 				if err != nil {
 					break
 				}
-				err = mail.ParseMail(ctx, ctx.DB, msg, c.ListID)
+				err = mail.ParseMail(ctx.Context, ctx.DB, msg, c.ListID)
 				if errors.As(err, &dupErr) {
 					log.Debugf("ignoring %s", err)
 				} else if err != nil {
@@ -71,7 +71,7 @@ func (c *CLI) Run(ctx *pw.Context) error {
 				}
 			}
 		} else {
-			err = mail.ParseMail(ctx, ctx.DB, os.Stdin, c.ListID)
+			err = mail.ParseMail(ctx.Context, ctx.DB, os.Stdin, c.ListID)
 		}
 		if errors.As(err, &dupErr) {
 			log.Debugf("ignoring %s", err)
