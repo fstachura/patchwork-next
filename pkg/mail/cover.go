@@ -76,7 +76,7 @@ func (p *parser) handleCoverLetter() error {
 		s.ID, db.Ptr[int](cover.ID),
 	)
 
-	coverName := stripPrefixes(p.subject)
+	coverName := StripPrefixes(p.subject)
 	if s.Name == nil {
 		_ = p.db.UpdateSeriesName(s.ID, db.Ptr(coverName))
 	} else {

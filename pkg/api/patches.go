@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -58,6 +59,7 @@ type ListPatchesInput struct {
 	Msgid     string `query:"msgid" doc:"Message ID"`
 	Since     string `query:"since" doc:"Earliest date"`
 	Before    string `query:"before" doc:"Latest date"`
+	Labels    string `query:"labels" doc:"Comma-separated label names (prefix with - to exclude)"`
 }
 
 type ListPatchesOutput struct {
@@ -307,6 +309,9 @@ func loadPatchDetails(q *db.Queries, patches []db.Patch) error {
 	if err := q.LoadPatchRelated(patches); err != nil {
 		return err
 	}
+	if err := q.LoadPatchLabels(patches); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -360,7 +365,26 @@ func applyPatchFilters(q *bun.SelectQuery, input *ListPatchesInput) *bun.SelectQ
 	if input.Q != "" {
 		q = q.Where("patch.name LIKE ?", "%"+input.Q+"%")
 	}
+	if input.Labels != "" {
+		q = applyPatchLabelsFilter(q, input.Labels)
+	}
 	return q
+}
+
+func applyPatchLabelsFilter(q *bun.SelectQuery, labels string) *bun.SelectQuery {
+	var include, exclude []string
+	for _, name := range strings.Split(labels, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if strings.HasPrefix(name, "-") {
+			exclude = append(exclude, name[1:])
+		} else {
+			include = append(include, name)
+		}
+	}
+	return db.FilterPatchLabels(q, include, exclude)
 }
 
 func patchToListResponse(p *db.Patch, base string) PatchListResponse {
@@ -425,6 +449,8 @@ func patchToListResponse(p *db.Patch, base string) PatchListResponse {
 	if r.Series == nil {
 		r.Series = []SeriesEmbedded{}
 	}
+	names := labelNames(p.Labels)
+	r.Labels = &names
 	return r
 }
 

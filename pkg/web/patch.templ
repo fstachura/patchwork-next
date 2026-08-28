@@ -129,6 +129,16 @@ templ patchDetailPage(d patchDetailData) {
 									}
 								</td>
 							</tr>
+							if len(d.Patch.Labels) > 0 {
+								<tr>
+									<th>Labels</th>
+									<td>
+										for _, l := range d.Patch.Labels {
+											@labelBadge(d.Project.Linkname, l)
+										}
+									</td>
+								</tr>
+							}
 							<tr>
 								<th>Headers</th>
 								<td>

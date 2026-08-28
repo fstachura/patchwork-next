@@ -9,6 +9,7 @@ type CLI struct {
 	Project      ProjectCmd      `cmd:"" help:"Manage projects."`
 	User         UserCmd         `cmd:"" help:"Manage users."`
 	Tag          TagCmd          `cmd:"" help:"Manage tags."`
+	Label        LabelCmd        `cmd:"" help:"Manage labels."`
 	State        StateCmd        `cmd:"" help:"Manage states."`
 	Maintainer   MaintainerCmd   `cmd:"" help:"Manage project maintainers."`
 	DelegateRule DelegateRuleCmd `cmd:"" help:"Manage delegation rules."`

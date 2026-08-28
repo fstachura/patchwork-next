@@ -37,6 +37,7 @@ type parser struct {
 
 	from     *mail.Address
 	prefixes []string
+	labels   []db.Label
 	subject  string
 	listid   string
 	date     time.Time
@@ -117,6 +118,8 @@ func ParseMail(ctx context.Context, database *bun.DB, r io.Reader, listid ...str
 	p.version = ParseVersion(p.subject, p.prefixes)
 	p.refs = FindReferences(&m.Header)
 
+	p.matchLabels()
+
 	log.Debugf("series marker: n=%d total=%d version=%d comment=%v refs=%v",
 		p.number, p.total, p.version, isComment, p.refs)
 
@@ -154,6 +157,50 @@ func ParseMail(ctx context.Context, database *bun.DB, r io.Reader, listid ...str
 	}
 
 	return nil
+}
+
+func (p *parser) matchLabels() {
+	if len(p.prefixes) == 0 {
+		return
+	}
+	labels, err := p.db.FindLabelsByName(p.project.ID, p.prefixes)
+	if err != nil || len(labels) == 0 {
+		return
+	}
+	p.labels = labels
+
+	matched := make(map[string]bool)
+	for _, l := range labels {
+		matched[strings.ToLower(l.Name)] = true
+	}
+	var remaining []string
+	for _, pfx := range p.prefixes {
+		if !matched[strings.ToLower(pfx)] {
+			remaining = append(remaining, pfx)
+		}
+	}
+	p.prefixes = remaining
+	p.subject = RebuildSubject(StripPrefixes(p.subject), remaining)
+}
+
+func RebuildSubject(name string, prefixes []string) string {
+	if len(prefixes) > 0 {
+		return fmt.Sprintf("[%s] %s", strings.Join(prefixes, ","), name)
+	}
+	return name
+}
+
+func (p *parser) assignLabels() {
+	if len(p.labels) == 0 || p.patch == nil {
+		return
+	}
+	ids := make([]int, len(p.labels))
+	for i, l := range p.labels {
+		ids[i] = l.ID
+	}
+	if err := p.db.SetPatchLabels(p.patch.ID, ids); err != nil {
+		log.Warnf("set patch labels: %v", err)
+	}
 }
 
 func (p *parser) parseSeriesMarker(isComment bool) {

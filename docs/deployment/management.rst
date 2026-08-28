@@ -344,6 +344,95 @@ Delete a tag.
    Skip confirmation.
 
 
+Labels
+------
+
+``pw admin label list``
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. program:: pw admin label list
+
+List all labels.
+
+``pw admin label create -n <name>``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. program:: pw admin label create
+
+Create a new label.
+
+.. option:: -n, --name <name>
+
+   Label name (required).
+
+.. option:: -p, --project <linkname>
+
+   Project linkname. When omitted, the label is global.
+
+.. option:: -d, --description <text>
+
+   Label description.
+
+.. option:: -c, --color <number>
+
+   Color as integer (e.g. ``0x00bcd4`` for cyan). Default: ``0``.
+
+``pw admin label update <name>``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. program:: pw admin label update
+
+Update an existing label.
+
+.. option:: <name>
+
+   Label name to update.
+
+.. option:: -p, --project <linkname>
+
+   Move the label to this project. Use ``global`` to make it global.
+
+.. option:: -c, --color <number>
+
+   New color as integer.
+
+.. option:: -d, --description <text>
+
+   New description.
+
+.. option:: -r, --rename <name>
+
+   Rename the label.
+
+``pw admin label delete <name>``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. program:: pw admin label delete
+
+Delete a label.
+
+.. option:: <name>
+
+   Label name to delete.
+
+.. option:: -f, --force
+
+   Skip confirmation.
+
+``pw admin label relabel [<project>...]``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. program:: pw admin label relabel
+
+Re-parse all patch subjects and assign labels based on subject prefixes.
+Matched prefixes are stripped from patch names. Labels must already exist
+before running this command.
+
+.. option:: <project>
+
+   Project listIDs to process. When omitted, all patches are processed.
+
+
 Maintainers
 -----------
 

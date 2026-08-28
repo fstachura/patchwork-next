@@ -51,6 +51,7 @@ func (p *parser) handlePatch() error {
 	}
 
 	_ = p.db.RefreshTagCounts(p.patch)
+	p.assignLabels()
 
 	log.Infof("patch saved id=%d msgid=%s", p.patch.ID, p.msgid)
 	p.createPatchCreatedEvent()

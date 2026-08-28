@@ -152,6 +152,12 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	labels, err := q.ListProjectLabels(project.ID)
+	if err != nil {
+		serverErrorPage(w, "list labels", err)
+		return
+	}
+
 	data := patchListData{
 		PC:          h.projectPageCtx(r, project),
 		Project:     *project,
@@ -168,6 +174,7 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 		Bundles:     bundles,
 		States:      states,
 		Delegates:   delegates,
+		Labels:      labels,
 	}
 	patchListPage(data).Render(ctx, w)
 }
@@ -710,6 +717,9 @@ func loadWebPatchDetails(q *db.Queries, patches []db.Patch) error {
 		return err
 	}
 	if err := q.LoadPatchCheckCounts(patches); err != nil {
+		return err
+	}
+	if err := q.LoadPatchLabels(patches); err != nil {
 		return err
 	}
 	return nil

@@ -232,7 +232,7 @@ func (p *parser) linkPreviousSeries() {
 	if p.series.Name == nil {
 		return
 	}
-	seriesName := stripPrefixes(*p.series.Name)
+	seriesName := StripPrefixes(*p.series.Name)
 	if seriesName == "" {
 		return
 	}
@@ -243,7 +243,7 @@ func (p *parser) linkPreviousSeries() {
 		if candidates[i].Name == nil {
 			continue
 		}
-		candName := stripPrefixes(*candidates[i].Name)
+		candName := StripPrefixes(*candidates[i].Name)
 		if candName == "" {
 			continue
 		}

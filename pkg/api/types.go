@@ -129,6 +129,7 @@ type PatchListResponse struct {
 	Checks         string           `json:"checks" format:"uri"`
 	Tags           map[string]int   `json:"tags"`
 	Related        []PatchEmbedded  `json:"related" since:"1.2"`
+	Labels         *[]string        `json:"labels,omitempty" since:"1.4"`
 }
 
 type PatchDetailResponse struct {

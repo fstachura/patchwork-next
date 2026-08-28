@@ -123,6 +123,28 @@ one delegate can be assigned to a patch.
    :doc:`delegation` for more information.
 
 
+Labels
+~~~~~~
+
+Labels are arbitrary bits of metadata attached to a patch. They can be used to
+signify priority, category, or other similar information. Labels can be
+associated with a project or be global (shared across all projects). Global
+labels are useful for things common to many projects, such as "RFC".
+
+When a patch is received, Patchwork automatically matches subject prefixes
+(the text inside ``[brackets]``) against known label names. Matched prefixes
+are stripped from the patch name and recorded as labels instead. For example,
+a patch with subject ``[PATCH RFC v2 1/3] fix something`` with an "RFC" label
+defined would be stored with name ``[v2,1/3] fix something`` and the label
+"RFC" attached.
+
+Labels are managed through the ``pw admin label`` commands. The ``relabel``
+subcommand can retroactively apply labels to existing patches.
+
+Labels are displayed with colored badges in the web interface and included in
+REST API responses for patches (since API version 1.4).
+
+
 Tags
 ~~~~
 

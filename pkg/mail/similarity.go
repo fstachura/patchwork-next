@@ -8,8 +8,8 @@ package mail
 import "strings"
 
 func nameSimilarity(a, b string) float64 {
-	a = strings.ToLower(stripPrefixes(a))
-	b = strings.ToLower(stripPrefixes(b))
+	a = strings.ToLower(StripPrefixes(a))
+	b = strings.ToLower(StripPrefixes(b))
 	if a == "" || b == "" {
 		return 0.0
 	}

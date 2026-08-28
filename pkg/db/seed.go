@@ -49,5 +49,18 @@ func SeedDefaults(ctx context.Context, database bun.IDB) error {
 		}
 	}
 
+	labels := []Label{
+		{Name: "RFC", Color: 0x0097a7, Description: "Request for comments"},
+	}
+	for i := range labels {
+		_, err := database.NewInsert().
+			Model(&labels[i]).
+			On("CONFLICT DO NOTHING").
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

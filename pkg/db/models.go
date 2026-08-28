@@ -7,6 +7,7 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -128,6 +129,43 @@ type State struct {
 	ActionRequired bool   `bun:"action_required,notnull" json:"action_required"`
 }
 
+type Label struct {
+	bun.BaseModel `bun:"table:label" unique:"project_id,name" json:"-"`
+
+	ID          int    `bun:"id,pk,autoincrement" json:"id"`
+	ProjectID   *int   `bun:"project_id" json:"-" fk:"project.id,cascade"`
+	Name        string `bun:"name,notnull" json:"name"`
+	Description string `bun:"description,notnull" json:"description,omitempty"`
+	Color       int    `bun:"color,notnull" json:"-"`
+}
+
+func (l Label) MarshalJSON() ([]byte, error) {
+	return json.Marshal(l.Name)
+}
+
+func (l *Label) ColorHex() string {
+	return fmt.Sprintf("#%06x", l.Color)
+}
+
+func (l *Label) TextColor() string {
+	r := (l.Color >> 16) & 0xff
+	g := (l.Color >> 8) & 0xff
+	b := l.Color & 0xff
+	luminance := 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)
+	if luminance > 128 {
+		return "#000"
+	}
+	return "#fff"
+}
+
+type PatchLabel struct {
+	bun.BaseModel `bun:"table:patch_label" unique:"patch_id,label_id" json:"-"`
+
+	ID      int `bun:"id,pk,autoincrement"`
+	PatchID int `bun:"patch_id,notnull" fk:"patch.id,cascade"`
+	LabelID int `bun:"label_id,notnull" fk:"label.id,cascade"`
+}
+
 type Tag struct {
 	bun.BaseModel `bun:"table:tag" json:"-"`
 
@@ -244,6 +282,7 @@ type Patch struct {
 	CheckCounts    [4]int         `bun:"-" json:"-"`
 	Tags           map[string]int `bun:"-" json:"tags"`
 	SeriesList     []SeriesRef    `bun:"-" json:"series"`
+	Labels         []Label        `bun:"-" json:"labels"`
 }
 
 type PatchTag struct {

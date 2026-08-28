@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/uptrace/bun"
 
@@ -109,6 +110,27 @@ func applyWebFilters(ctx context.Context, database bun.IDB, q *bun.SelectQuery, 
 				RemoveURL: removeParam(basePath, params, "series"),
 			})
 		}
+	}
+
+	if v := params.Get("labels"); v != "" {
+		var include, exclude []string
+		for _, name := range strings.Split(v, " ") {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			if strings.HasPrefix(name, "-") {
+				exclude = append(exclude, name[1:])
+			} else {
+				include = append(include, name)
+			}
+		}
+		q = db.FilterPatchLabels(q, include, exclude)
+		filters = append(filters, appliedFilter{
+			Label:     "Labels",
+			Value:     v,
+			RemoveURL: removeParam(basePath, params, "labels"),
+		})
 	}
 
 	return q, filters

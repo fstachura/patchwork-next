@@ -364,6 +364,22 @@ pill.fail { background: #d9534f; }
 .check-warn { color: #f0ad4e; font-weight: bold; }
 .check-fail { color: #d9534f; font-weight: bold; }
 
+/* --- label badges --- */
+.label-badge {
+	display: inline-block;
+	padding: 0 6px;
+	margin: 0 2px;
+	border-radius: 3px;
+	font-size: 0.85em;
+	font-weight: bold;
+	vertical-align: middle;
+	white-space: nowrap;
+	text-decoration: none;
+}
+a.label-badge:hover {
+	opacity: 0.8;
+}
+
 /* --- download links --- */
 title-bar {
 	display: flex;

@@ -11,11 +11,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/emersion/go-message/mail"
 	"github.com/uptrace/bun"
 
 	"github.com/getpatchwork/patchwork/pkg/db"
 	"github.com/getpatchwork/patchwork/pkg/log"
+	"github.com/getpatchwork/patchwork/pkg/mail"
 )
 
 func strp(s string) *string { return &s }
@@ -43,6 +43,14 @@ func personToEmbedded(p *db.Person, base string) PersonEmbedded {
 		Name:  name,
 		Email: p.Email,
 	}
+}
+
+func labelNames(labels []db.Label) []string {
+	names := make([]string, len(labels))
+	for i, l := range labels {
+		names[i] = l.Name
+	}
+	return names
 }
 
 func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series []db.Series) {
@@ -177,19 +185,7 @@ func parseHeadersMap(raw string) map[string]string {
 }
 
 func parseSubjectFromHeaders(headers string) string {
-	if headers == "" {
-		return ""
-	}
-	raw := strings.ReplaceAll(headers, "\n", "\r\n")
-	if !strings.HasSuffix(raw, "\r\n\r\n") {
-		raw += "\r\n"
-	}
-	m, err := mail.CreateReader(strings.NewReader(raw))
-	if err != nil {
-		return ""
-	}
-	subject, _ := m.Header.Subject()
-	return subject
+	return mail.ParseSubjectFromHeaders(headers)
 }
 
 func listArchiveURL(project *db.Project, msgid string) string {

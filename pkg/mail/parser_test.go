@@ -438,6 +438,117 @@ func TestFindMessageIDInvalidFallback(t *testing.T) {
 		strings.NewReader(data), "test.example.com")
 }
 
+func TestLabelExtraction(t *testing.T) {
+	database, ctx, _, _ := testDB(t, "test.example.com")
+
+	t.Run("label stripped from patch name", func(t *testing.T) {
+		err := parseEmail(t, ctx, database, sampleDiff,
+			withSubject("[PATCH RFC] fix something"),
+			withMsgID("<label-strip@test>"),
+			withListID("test.example.com"))
+		require.NoError(t, err)
+
+		var name string
+		database.NewSelect().TableExpr("patch").
+			Column("name").Where("msgid = ?", "<label-strip@test>").
+			Scan(context.Background(), &name)
+		assert.Equal(t, "fix something", name)
+	})
+
+	t.Run("label association created", func(t *testing.T) {
+		var count int
+		database.NewRaw(`
+			SELECT count(*) FROM patch_label pl
+			JOIN patch p ON p.id = pl.patch_id
+			WHERE p.msgid = ?
+		`, "<label-strip@test>").Scan(context.Background(), &count)
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("non-label prefixes preserved", func(t *testing.T) {
+		err := parseEmail(t, ctx, database, sampleDiff,
+			withSubject("[PATCH RFC v2 1/3] another fix"),
+			withMsgID("<label-keep@test>"),
+			withListID("test.example.com"))
+		require.NoError(t, err)
+
+		var name string
+		database.NewSelect().TableExpr("patch").
+			Column("name").Where("msgid = ?", "<label-keep@test>").
+			Scan(context.Background(), &name)
+		assert.Equal(t, "[v2,1/3] another fix", name)
+	})
+
+	t.Run("no label match keeps all prefixes", func(t *testing.T) {
+		err := parseEmail(t, ctx, database, sampleDiff,
+			withSubject("[PATCH WIP] some change"),
+			withMsgID("<no-label@test>"),
+			withListID("test.example.com"))
+		require.NoError(t, err)
+
+		var name string
+		database.NewSelect().TableExpr("patch").
+			Column("name").Where("msgid = ?", "<no-label@test>").
+			Scan(context.Background(), &name)
+		assert.Equal(t, "[WIP] some change", name)
+
+		var count int
+		database.NewRaw(`
+			SELECT count(*) FROM patch_label pl
+			JOIN patch p ON p.id = pl.patch_id
+			WHERE p.msgid = ?
+		`, "<no-label@test>").Scan(context.Background(), &count)
+		assert.Equal(t, 0, count)
+	})
+}
+
+func TestLabelProjectScoped(t *testing.T) {
+	database, ctx, _, proj := testDB(t, "test.example.com")
+
+	database.NewRaw(`
+		INSERT INTO label (name, description, color, project_id)
+		VALUES ('WIP', '', 0xff9800, ?)
+	`, proj.ID).Exec(context.Background())
+
+	t.Run("project label matched", func(t *testing.T) {
+		err := parseEmail(t, ctx, database, sampleDiff,
+			withSubject("[PATCH WIP] project label"),
+			withMsgID("<proj-label@test>"),
+			withListID("test.example.com"))
+		require.NoError(t, err)
+
+		var name string
+		database.NewSelect().TableExpr("patch").
+			Column("name").Where("msgid = ?", "<proj-label@test>").
+			Scan(context.Background(), &name)
+		assert.Equal(t, "project label", name)
+	})
+}
+
+func TestLabelCaseInsensitive(t *testing.T) {
+	database, ctx, _, _ := testDB(t, "test.example.com")
+
+	err := parseEmail(t, ctx, database, sampleDiff,
+		withSubject("[PATCH rfc] lowercase prefix"),
+		withMsgID("<label-case@test>"),
+		withListID("test.example.com"))
+	require.NoError(t, err)
+
+	var name string
+	database.NewSelect().TableExpr("patch").
+		Column("name").Where("msgid = ?", "<label-case@test>").
+		Scan(context.Background(), &name)
+	assert.Equal(t, "lowercase prefix", name)
+
+	var count int
+	database.NewRaw(`
+		SELECT count(*) FROM patch_label pl
+		JOIN patch p ON p.id = pl.patch_id
+		WHERE p.msgid = ?
+	`, "<label-case@test>").Scan(context.Background(), &count)
+	assert.Equal(t, 1, count)
+}
+
 func TestFindReferencesInvalidFallback(t *testing.T) {
 	h := makeHeader(t, map[string]string{
 		"From":        "test@example.com",

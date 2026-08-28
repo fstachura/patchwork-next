@@ -206,7 +206,23 @@ func ParsePullRequest(content string) string {
 	return strings.TrimSpace(spaceRe.ReplaceAllString(m[1], " "))
 }
 
-func stripPrefixes(name string) string {
+func ParseSubjectFromHeaders(headers string) string {
+	if headers == "" {
+		return ""
+	}
+	raw := strings.ReplaceAll(headers, "\n", "\r\n")
+	if !strings.HasSuffix(raw, "\r\n\r\n") {
+		raw += "\r\n"
+	}
+	m, err := mail.CreateReader(strings.NewReader(raw))
+	if err != nil {
+		return ""
+	}
+	subject, _ := m.Header.Subject()
+	return subject
+}
+
+func StripPrefixes(name string) string {
 	for {
 		m := prefixRe.FindStringSubmatch(name)
 		if m == nil {
