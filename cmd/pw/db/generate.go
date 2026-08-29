@@ -192,6 +192,7 @@ func (c *GenerateCmd) Run(ctx *pw.Context) error {
 
 		fmt.Printf("\rgenerated series %d/%d", sb*BATCH_SIZE, c.Series)
 	}
+	fmt.Printf("\n")
 
 	return nil
 }

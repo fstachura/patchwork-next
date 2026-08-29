@@ -6,6 +6,8 @@
 package db
 
 import (
+	"github.com/uptrace/bun/extra/bundebug"
+
 	"github.com/getpatchwork/patchwork/cmd/pw/pw"
 	"github.com/getpatchwork/patchwork/pkg/db/migrations"
 	"github.com/getpatchwork/patchwork/pkg/log"
@@ -14,6 +16,7 @@ import (
 type SyncCmd struct{}
 
 func (c *SyncCmd) Run(ctx *pw.Context) error {
+	ctx.DB.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 	if err := migrations.RunMigrations(ctx, ctx.DB); err != nil {
 		return err
 	}

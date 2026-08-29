@@ -265,6 +265,7 @@ type Patch struct {
 	SeriesID    *int      `bun:"series_id" json:"-" fk:"series.id,setnull"`
 	Number      *int      `bun:"number" json:"-"`
 	RelatedID   *int      `bun:"related_id" json:"-" fk:"patch_relation.id,setnull"`
+	LabelIDs    []int     `bun:"label_ids" json:"-"`
 
 	Submitter *Person  `bun:"rel:belongs-to,join:submitter_id=id" json:"submitter,omitempty"`
 	Project   *Project `bun:"rel:belongs-to,join:project_id=id" json:"project,omitempty"`

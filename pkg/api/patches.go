@@ -72,9 +72,16 @@ func (h *handler) ListPatches(
 ) (*ListPatchesOutput, error) {
 	base := h.apiBase(ctx)
 
-	idb := db.GetQueries(ctx).DB
+	q := db.GetQueries(ctx)
+	labels, err := q.ListLabels()
+	if err != nil {
+		log.Errorf("labels list: %v", err)
+		return nil, huma.Error500InternalServerError("Internal error.")
+	}
+
+	idb := q.DB
 	sq := idb.NewSelect().Model((*db.Patch)(nil))
-	sq = applyPatchFilters(sq, input)
+	sq = applyPatchFilters(sq, input, labels)
 
 	total, err := sq.Count(ctx)
 	if err != nil {
@@ -309,13 +316,17 @@ func loadPatchDetails(q *db.Queries, patches []db.Patch) error {
 	if err := q.LoadPatchRelated(patches); err != nil {
 		return err
 	}
-	if err := q.LoadPatchLabels(patches); err != nil {
+	labels, err := q.ListLabels()
+	if err != nil {
+		return err
+	}
+	if err := q.LoadPatchLabels(patches, labels); err != nil {
 		return err
 	}
 	return nil
 }
 
-func applyPatchFilters(q *bun.SelectQuery, input *ListPatchesInput) *bun.SelectQuery {
+func applyPatchFilters(q *bun.SelectQuery, input *ListPatchesInput, dbLabels []db.Label) *bun.SelectQuery {
 	if input.Project != "" {
 		if id, err := strconv.Atoi(input.Project); err == nil {
 			q = q.Where("patch.project_id = ?", id)
@@ -366,22 +377,37 @@ func applyPatchFilters(q *bun.SelectQuery, input *ListPatchesInput) *bun.SelectQ
 		q = q.Where("patch.name LIKE ?", "%"+input.Q+"%")
 	}
 	if input.Labels != "" {
-		q = applyPatchLabelsFilter(q, input.Labels)
+		q = applyPatchLabelsFilter(q, input.Labels, dbLabels)
 	}
 	return q
 }
 
-func applyPatchLabelsFilter(q *bun.SelectQuery, labels string) *bun.SelectQuery {
-	var include, exclude []string
+func applyPatchLabelsFilter(q *bun.SelectQuery, labels string, dbLabels []db.Label) *bun.SelectQuery {
+	var include, exclude []int
+
+	labelByName := make(map[string]db.Label)
+	for _, label := range dbLabels {
+		mapLabel, ok := labelByName[label.Name]
+		if !ok || mapLabel.ProjectID == nil {
+			labelByName[label.Name] = label
+		}
+	}
+
 	for _, name := range strings.Split(labels, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
 		}
 		if strings.HasPrefix(name, "-") {
-			exclude = append(exclude, name[1:])
+			mapLabel, ok := labelByName[name[1:]]
+			if ok {
+				exclude = append(exclude, mapLabel.ID)
+			}
 		} else {
-			include = append(include, name)
+			mapLabel, ok := labelByName[name]
+			if ok {
+				include = append(include, mapLabel.ID)
+			}
 		}
 	}
 	return db.FilterPatchLabels(q, include, exclude)

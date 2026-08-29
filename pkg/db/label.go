@@ -23,6 +23,14 @@ func (q *Queries) ListProjectLabels(projectID int) ([]Label, error) {
 	return labels, err
 }
 
+func (q *Queries) ListLabels() ([]Label, error) {
+	var labels []Label
+	err := q.DB.NewSelect().Model(&labels).
+		OrderExpr("name ASC").
+		Scan(q.Ctx)
+	return labels, err
+}
+
 func (q *Queries) FindLabelsByName(projectID int, names []string) ([]Label, error) {
 	var labels []Label
 	lower := make([]string, len(names))
@@ -53,64 +61,32 @@ func (q *Queries) SetPatchLabels(patchID int, labelIDs []int) error {
 }
 
 func FilterPatchLabels(
-	q *bun.SelectQuery, include, exclude []string,
+	q *bun.SelectQuery, include, exclude []int,
 ) *bun.SelectQuery {
-	if len(exclude) > 0 {
-		sub := q.NewSelect().
-			Model((*PatchLabel)(nil)).
-			Column("patch_id").
-			Join("JOIN label ON label.id = patch_label.label_id").
-			Where("label.name IN ?", bun.Tuple(exclude))
-		q = q.Where("patch.id NOT IN (?)", sub)
+	for _, id := range exclude {
+		q = q.Where("NOT ('?'::jsonb <@ label_ids)", id)
 	}
-	if len(include) > 0 {
-		sub := q.NewSelect().
-			Model((*PatchLabel)(nil)).
-			Column("patch_id").
-			Join("JOIN label ON label.id = patch_label.label_id").
-			Where("label.name IN ?", bun.Tuple(include)).
-			GroupExpr("patch_id").
-			Having("COUNT(DISTINCT label.name) >= ?", len(include))
-		q = q.Where("patch.id IN (?)", sub)
+	for _, id := range include {
+		q = q.Where("'?'::jsonb <@ label_ids", id)
 	}
 	return q
 }
 
-func (q *Queries) LoadPatchLabels(patches []Patch) error {
+func (q *Queries) LoadPatchLabels(patches []Patch, projectLabels []Label) error {
 	if len(patches) == 0 {
 		return nil
 	}
 
-	ids := make([]int, len(patches))
-	byId := make(map[int]*Patch, len(patches))
-	for i := range patches {
-		p := &patches[i]
-		ids[i] = p.ID
-		byId[p.ID] = p
-	}
-
-	type labelRow struct {
-		PatchID int    `bun:"patch_id"`
-		Name    string `bun:"name"`
-		Color   int    `bun:"color"`
-	}
-	var labelRows []labelRow
-	if err := q.DB.NewSelect().Model((*PatchLabel)(nil)).
-		ColumnExpr("patch_id, label.name, label.color").
-		Join("JOIN label ON label_id = label.id").
-		Where("patch_id IN ?", bun.Tuple(ids)).
-		OrderExpr("label.name ASC").
-		Scan(q.Ctx, &labelRows); err != nil {
-		return err
-	}
-
-	for _, r := range labelRows {
-		if p, ok := byId[r.PatchID]; ok {
-			p.Labels = append(p.Labels, Label{
-				Name:  r.Name,
-				Color: r.Color,
-			})
+	for pi, _ := range patches {
+		for _, labelId := range patches[pi].LabelIDs {
+			for _, labelModel := range projectLabels {
+				if labelModel.ID == labelId {
+					patches[pi].Labels = append(patches[pi].Labels, labelModel)
+					break
+				}
+			}
 		}
 	}
+
 	return nil
 }

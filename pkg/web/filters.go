@@ -17,7 +17,7 @@ import (
 	"github.com/getpatchwork/patchwork/pkg/db"
 )
 
-func applyWebFilters(ctx context.Context, database bun.IDB, q *bun.SelectQuery, params url.Values, basePath string) (*bun.SelectQuery, []appliedFilter) {
+func applyWebFilters(ctx context.Context, database bun.IDB, q *bun.SelectQuery, params url.Values, basePath string, labels []db.Label) (*bun.SelectQuery, []appliedFilter) {
 	var filters []appliedFilter
 
 	if v := params.Get("q"); v != "" {
@@ -112,17 +112,31 @@ func applyWebFilters(ctx context.Context, database bun.IDB, q *bun.SelectQuery, 
 		}
 	}
 
+	labelByName := make(map[string]db.Label)
+	for _, label := range labels {
+		mapLabel, ok := labelByName[label.Name]
+		if !ok || mapLabel.ProjectID == nil {
+			labelByName[label.Name] = label
+		}
+	}
+
 	if v := params.Get("labels"); v != "" {
-		var include, exclude []string
+		var include, exclude []int
 		for _, name := range strings.Split(v, " ") {
 			name = strings.TrimSpace(name)
 			if name == "" {
 				continue
 			}
 			if strings.HasPrefix(name, "-") {
-				exclude = append(exclude, name[1:])
+				mapLabel, ok := labelByName[name[1:]]
+				if ok {
+					exclude = append(exclude, mapLabel.ID)
+				}
 			} else {
-				include = append(include, name)
+				mapLabel, ok := labelByName[name]
+				if ok {
+					include = append(include, mapLabel.ID)
+				}
 			}
 		}
 		q = db.FilterPatchLabels(q, include, exclude)

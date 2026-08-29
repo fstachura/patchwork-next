@@ -47,13 +47,20 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 
 	sq := q.DB.NewSelect().Model((*db.Patch)(nil)).
 		Column("id", "msgid", "date", "submitter_id", "project_id",
-			"name", "state_id", "delegate_id", "archived", "series_id").
+			"name", "state_id", "delegate_id", "archived", "series_id",
+			"label_ids").
 		Where("project_id = ?", project.ID)
 
 	var filters []appliedFilter
 	baseQuery := fmt.Sprintf("/project/%s/list", linkname)
 
-	sq, filters = applyWebFilters(q.Ctx, q.DB, sq, params, baseQuery)
+	labels, err := q.ListProjectLabels(project.ID)
+	if err != nil {
+		serverErrorPage(w, "list labels", err)
+		return
+	}
+
+	sq, filters = applyWebFilters(q.Ctx, q.DB, sq, params, baseQuery, labels)
 
 	sort := params.Get("order")
 	if sort == "" {
@@ -81,6 +88,11 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 
 	if err = loadWebPatchDetails(q, patches); err != nil {
 		serverErrorPage(w, "load patch details", err)
+		return
+	}
+
+	if err := q.LoadPatchLabels(patches, labels); err != nil {
+		serverErrorPage(w, "load labels", err)
 		return
 	}
 
@@ -149,12 +161,6 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 	delegates, err := q.ListProjectMaintainers(project.ID)
 	if err != nil {
 		serverErrorPage(w, "list delegates", err)
-		return
-	}
-
-	labels, err := q.ListProjectLabels(project.ID)
-	if err != nil {
-		serverErrorPage(w, "list labels", err)
 		return
 	}
 
@@ -717,9 +723,6 @@ func loadWebPatchDetails(q *db.Queries, patches []db.Patch) error {
 		return err
 	}
 	if err := q.LoadPatchCheckCounts(patches); err != nil {
-		return err
-	}
-	if err := q.LoadPatchLabels(patches); err != nil {
 		return err
 	}
 	return nil
