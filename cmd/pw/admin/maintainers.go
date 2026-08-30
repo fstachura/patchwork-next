@@ -26,18 +26,15 @@ type MaintainerListCmd struct {
 }
 
 func (c *MaintainerListCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q := pw.NewQueries(ctx)
 
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Project).
-		Scan(ctx)
+	project, err := q.GetProjectByLinkname(c.Project)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Project)
 	}
 
 	var maintainers []db.ProjectMaintainer
-	err = database.NewSelect().Model(&maintainers).
+	err = q.Select(&maintainers).
 		Relation("User").
 		Where("project_id = ?", project.ID).
 		Scan(ctx)
@@ -63,20 +60,18 @@ type MaintainerAddCmd struct {
 }
 
 func (c *MaintainerAddCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Project).
-		Scan(ctx)
+	project, err := q.GetProjectByLinkname(c.Project)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Project)
 	}
 
-	var user db.User
-	err = database.NewSelect().Model(&user).
-		Where("username = ?", c.Username).
-		Scan(ctx)
+	user, err := q.GetUserByUsername(c.Username)
 	if err != nil {
 		return fmt.Errorf("user %q not found", c.Username)
 	}
@@ -85,7 +80,12 @@ func (c *MaintainerAddCmd) Run(ctx context.Context) error {
 		UserID:    user.ID,
 		ProjectID: project.ID,
 	}
-	err = db.New(ctx, database).Insert(&m)
+	err = q.Insert(&m)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
@@ -100,35 +100,39 @@ type MaintainerRemoveCmd struct {
 }
 
 func (c *MaintainerRemoveCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Project).
-		Scan(ctx)
+	project, err := q.GetProjectByLinkname(c.Project)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Project)
 	}
 
-	var user db.User
-	err = database.NewSelect().Model(&user).
-		Where("username = ?", c.Username).
-		Scan(ctx)
+	user, err := q.GetUserByUsername(c.Username)
 	if err != nil {
 		return fmt.Errorf("user %q not found", c.Username)
 	}
 
-	res, err := database.NewDelete().
-		Model((*db.ProjectMaintainer)(nil)).
+	var m db.ProjectMaintainer
+	err = q.Select(&m).
 		Where("user_id = ?", user.ID).
 		Where("project_id = ?", project.ID).
-		Exec(ctx)
+		Scan(ctx)
+	if err != nil {
+		return fmt.Errorf("%q is not a maintainer of %q", c.Username, c.Project)
+	}
+
+	_, err = q.Delete(&m).WherePK().Exec(ctx)
 	if err != nil {
 		return err
 	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return fmt.Errorf("%q is not a maintainer of %q", c.Username, c.Project)
+
+	err = q.Commit()
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("Removed %q from maintainers of %q\n", c.Username, c.Project)

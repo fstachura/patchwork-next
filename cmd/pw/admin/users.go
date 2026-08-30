@@ -30,10 +30,8 @@ type UserCmd struct {
 type UserListCmd struct{}
 
 func (c *UserListCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
-
 	var users []db.User
-	err := database.NewSelect().Model(&users).
+	err := pw.NewQueries(ctx).Select(&users).
 		OrderExpr("username ASC").
 		Scan(ctx)
 	if err != nil {
@@ -90,7 +88,11 @@ func (c *UserCreateCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("passwords do not match")
 	}
 
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
 	user := db.User{
 		Username:   c.Username,
@@ -100,7 +102,12 @@ func (c *UserCreateCmd) Run(ctx context.Context) error {
 		IsActive:   true,
 		DateJoined: time.Now(),
 	}
-	err = db.New(ctx, database).Insert(&user)
+	err = q.Insert(&user)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
@@ -115,12 +122,13 @@ type UserDeleteCmd struct {
 }
 
 func (c *UserDeleteCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var user db.User
-	err := database.NewSelect().Model(&user).
-		Where("username = ?", c.Username).
-		Scan(ctx)
+	user, err := q.GetUserByUsername(c.Username)
 	if err != nil {
 		return fmt.Errorf("user %q not found", c.Username)
 	}
@@ -136,9 +144,12 @@ func (c *UserDeleteCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	_, err = database.NewDelete().Model((*db.User)(nil)).
-		Where("id = ?", user.ID).
-		Exec(ctx)
+	_, err = q.Delete(user).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
@@ -152,12 +163,13 @@ type UserPasswdCmd struct {
 }
 
 func (c *UserPasswdCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var user db.User
-	err := database.NewSelect().Model(&user).
-		Where("username = ?", c.Username).
-		Scan(ctx)
+	user, err := q.GetUserByUsername(c.Username)
 	if err != nil {
 		return fmt.Errorf("user %q not found", c.Username)
 	}
@@ -177,10 +189,15 @@ func (c *UserPasswdCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("password cannot be empty")
 	}
 
-	_, err = database.NewUpdate().Model(&user).
-		Where("id = ?", user.ID).
+	_, err = q.Update(user).
+		WherePK().
 		Set("password = ?", db.HashPassword(password)).
 		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}

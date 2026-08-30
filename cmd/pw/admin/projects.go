@@ -28,12 +28,7 @@ type ProjectCmd struct {
 type ProjectListCmd struct{}
 
 func (c *ProjectListCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
-
-	var projects []db.Project
-	err := database.NewSelect().Model(&projects).
-		OrderExpr("id ASC").
-		Scan(ctx)
+	projects, err := pw.NewQueries(ctx).ListProjects()
 	if err != nil {
 		return err
 	}
@@ -52,12 +47,7 @@ type ProjectShowCmd struct {
 }
 
 func (c *ProjectShowCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
-
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Linkname).
-		Scan(ctx)
+	project, err := pw.NewQueries(ctx).GetProjectByLinkname(c.Linkname)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Linkname)
 	}
@@ -91,22 +81,31 @@ type ProjectCreateCmd struct {
 }
 
 func (c *ProjectCreateCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
 	project := db.Project{
-		Name:                 c.Name,
-		Linkname:             c.Linkname,
-		Listid:               c.ListID,
-		Listemail:            c.ListEmail,
-		WebURL:               c.WebURL,
-		ScmURL:               c.ScmURL,
-		WebScmURL:            c.WebScmURL,
-		ListArchiveURL:       c.ListArchiveURL,
-		SubjectMatch:         c.SubjectMatch,
-		CommitURLFormat:      c.CommitURL,
-		ListArchiveURLFormat: "",
+		Name:            c.Name,
+		Linkname:        c.Linkname,
+		Listid:          c.ListID,
+		Listemail:       c.ListEmail,
+		WebURL:          c.WebURL,
+		ScmURL:          c.ScmURL,
+		WebScmURL:       c.WebScmURL,
+		ListArchiveURL:  c.ListArchiveURL,
+		SubjectMatch:    c.SubjectMatch,
+		CommitURLFormat: c.CommitURL,
 	}
-	err := db.New(ctx, database).Insert(&project)
+
+	err = q.Insert(&project)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
@@ -129,17 +128,18 @@ type ProjectUpdateCmd struct {
 }
 
 func (c *ProjectUpdateCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	queries, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer queries.Rollback()
 
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Linkname).
-		Scan(ctx)
+	project, err := queries.GetProjectByLinkname(c.Linkname)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Linkname)
 	}
 
-	q := database.NewUpdate().Model(&project).Where("id = ?", project.ID)
+	q := queries.Update(project).WherePK()
 	updated := false
 	if c.Name != "" {
 		q = q.Set("name = ?", c.Name)
@@ -187,6 +187,11 @@ func (c *ProjectUpdateCmd) Run(ctx context.Context) error {
 		return err
 	}
 
+	err = queries.Commit()
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("Updated project %q\n", c.Linkname)
 	return nil
 }
@@ -197,12 +202,13 @@ type ProjectDeleteCmd struct {
 }
 
 func (c *ProjectDeleteCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Linkname).
-		Scan(ctx)
+	project, err := q.GetProjectByLinkname(c.Linkname)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Linkname)
 	}
@@ -218,9 +224,12 @@ func (c *ProjectDeleteCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	_, err = database.NewDelete().Model((*db.Project)(nil)).
-		Where("id = ?", project.ID).
-		Exec(ctx)
+	_, err = q.Delete(project).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}

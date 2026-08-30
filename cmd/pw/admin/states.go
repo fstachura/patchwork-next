@@ -26,12 +26,7 @@ type StateCmd struct {
 type StateListCmd struct{}
 
 func (c *StateListCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
-
-	var states []db.State
-	err := database.NewSelect().Model(&states).
-		OrderExpr("ordering ASC").
-		Scan(ctx)
+	states, err := pw.NewQueries(ctx).ListStates()
 	if err != nil {
 		return err
 	}
@@ -53,7 +48,11 @@ type StateCreateCmd struct {
 }
 
 func (c *StateCreateCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
 	state := db.State{
 		Name:           c.Name,
@@ -61,7 +60,12 @@ func (c *StateCreateCmd) Run(ctx context.Context) error {
 		Ordering:       c.Ordering,
 		ActionRequired: c.ActionRequired,
 	}
-	err := db.New(ctx, database).Insert(&state)
+	err = q.Insert(&state)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
@@ -76,12 +80,13 @@ type StateDeleteCmd struct {
 }
 
 func (c *StateDeleteCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var state db.State
-	err := database.NewSelect().Model(&state).
-		Where("slug = ?", c.Slug).
-		Scan(ctx)
+	state, err := q.GetStateBySlug(c.Slug)
 	if err != nil {
 		return fmt.Errorf("state %q not found", c.Slug)
 	}
@@ -97,9 +102,12 @@ func (c *StateDeleteCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	_, err = database.NewDelete().Model((*db.State)(nil)).
-		Where("id = ?", state.ID).
-		Exec(ctx)
+	_, err = q.Delete(state).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}

@@ -11,14 +11,17 @@ import (
 	"time"
 
 	"github.com/getpatchwork/patchwork/cmd/pw/pw"
-	"github.com/getpatchwork/patchwork/pkg/db"
 )
 
 type GcCmd struct{}
 
 func (c *GcCmd) Run(ctx context.Context) error {
 	cfg := pw.GetConfig(ctx)
-	q := db.New(ctx, pw.GetDB(ctx))
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
 	n, err := q.CleanExpiredSessions()
 	if err != nil {
@@ -55,5 +58,5 @@ func (c *GcCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	return nil
+	return q.Commit()
 }

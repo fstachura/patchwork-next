@@ -34,24 +34,20 @@ type WebhookListCmd struct {
 }
 
 func (c *WebhookListCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	queries := pw.NewQueries(ctx)
 
-	q := database.NewSelect().Model((*db.Webhook)(nil)).
-		OrderExpr("id ASC")
+	var hooks []db.Webhook
 
+	q := queries.Select(&hooks).OrderExpr("id ASC")
 	if c.Project != "" {
-		var project db.Project
-		err := database.NewSelect().Model(&project).
-			Where("linkname = ?", c.Project).
-			Scan(ctx)
+		project, err := queries.GetProjectByLinkname(c.Project)
 		if err != nil {
 			return fmt.Errorf("project %q not found", c.Project)
 		}
 		q = q.Where("project_id = ?", project.ID)
 	}
 
-	var hooks []db.Webhook
-	if err := q.Scan(ctx, &hooks); err != nil {
+	if err := q.Scan(ctx); err != nil {
 		return err
 	}
 
@@ -67,7 +63,7 @@ func (c *WebhookListCmd) Run(ctx context.Context) error {
 		for id := range projIDs {
 			ids = append(ids, id)
 		}
-		database.NewSelect().Model(&projects).
+		queries.Select(&projects).
 			Where("id IN ?", bun.Tuple(ids)).
 			Scan(ctx)
 		for _, p := range projects {
@@ -126,20 +122,18 @@ func (c *WebhookCreateCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Project).
-		Scan(ctx)
+	project, err := q.GetProjectByLinkname(c.Project)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Project)
 	}
 
-	var user db.User
-	err = database.NewSelect().Model(&user).
-		Where("username = ?", c.User).
-		Scan(ctx)
+	user, err := q.GetUserByUsername(c.User)
 	if err != nil {
 		return fmt.Errorf("user %q not found", c.User)
 	}
@@ -153,7 +147,12 @@ func (c *WebhookCreateCmd) Run(ctx context.Context) error {
 		CreatorID: user.ID,
 		Created:   time.Now(),
 	}
-	err = db.New(ctx, database).Insert(&hook)
+	err = q.Insert(&hook)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
@@ -171,17 +170,18 @@ type WebhookUpdateCmd struct {
 }
 
 func (c *WebhookUpdateCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	queries, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer queries.Rollback()
 
-	var hook db.Webhook
-	err := database.NewSelect().Model(&hook).
-		Where("id = ?", c.ID).
-		Scan(ctx)
+	hook, err := queries.GetWebhookByID(c.ID)
 	if err != nil {
 		return fmt.Errorf("webhook %d not found", c.ID)
 	}
 
-	q := database.NewUpdate().Model(&hook).Where("id = ?", hook.ID)
+	q := queries.Update(hook).WherePK()
 	updated := false
 	if c.URL != "" {
 		q = q.Set("url = ?", c.URL)
@@ -212,6 +212,11 @@ func (c *WebhookUpdateCmd) Run(ctx context.Context) error {
 		return err
 	}
 
+	err = queries.Commit()
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("Updated webhook %d\n", c.ID)
 	return nil
 }
@@ -222,12 +227,13 @@ type WebhookDeleteCmd struct {
 }
 
 func (c *WebhookDeleteCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var hook db.Webhook
-	err := database.NewSelect().Model(&hook).
-		Where("id = ?", c.ID).
-		Scan(ctx)
+	hook, err := q.GetWebhookByID(c.ID)
 	if err != nil {
 		return fmt.Errorf("webhook %d not found", c.ID)
 	}
@@ -244,9 +250,12 @@ func (c *WebhookDeleteCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	_, err = database.NewDelete().Model((*db.Webhook)(nil)).
-		Where("id = ?", hook.ID).
-		Exec(ctx)
+	_, err = q.Delete(hook).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}

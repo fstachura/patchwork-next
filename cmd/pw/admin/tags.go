@@ -26,10 +26,8 @@ type TagCmd struct {
 type TagListCmd struct{}
 
 func (c *TagListCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
-
 	var tags []db.Tag
-	err := database.NewSelect().Model(&tags).
+	err := pw.NewQueries(ctx).Select(&tags).
 		OrderExpr("id ASC").
 		Scan(ctx)
 	if err != nil {
@@ -53,7 +51,11 @@ type TagCreateCmd struct {
 }
 
 func (c *TagCreateCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
 	tag := db.Tag{
 		Name:       c.Name,
@@ -61,7 +63,12 @@ func (c *TagCreateCmd) Run(ctx context.Context) error {
 		Abbrev:     c.Abbrev,
 		ShowColumn: c.ShowColumn,
 	}
-	err := db.New(ctx, database).Insert(&tag)
+	err = q.Insert(&tag)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
@@ -76,12 +83,13 @@ type TagDeleteCmd struct {
 }
 
 func (c *TagDeleteCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
-	var tag db.Tag
-	err := database.NewSelect().Model(&tag).
-		Where("name = ?", c.Name).
-		Scan(ctx)
+	tag, err := q.GetTagByName(c.Name)
 	if err != nil {
 		return fmt.Errorf("tag %q not found", c.Name)
 	}
@@ -97,9 +105,12 @@ func (c *TagDeleteCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	_, err = database.NewDelete().Model((*db.Tag)(nil)).
-		Where("id = ?", tag.ID).
-		Exec(ctx)
+	_, err = q.Delete(tag).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}

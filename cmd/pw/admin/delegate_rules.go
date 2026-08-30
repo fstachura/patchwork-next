@@ -30,20 +30,14 @@ type DelegateRuleListCmd struct {
 }
 
 func (c *DelegateRuleListCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Project).
-		Scan(ctx)
+	q := pw.NewQueries(ctx)
+
+	project, err := q.GetProjectByLinkname(c.Project)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Project)
 	}
 
-	var rules []db.DelegationRule
-	err = database.NewSelect().Model(&rules).
-		Where("project_id = ?", project.ID).
-		OrderExpr("priority ASC").
-		Scan(ctx)
+	rules, err := q.ListDelegationRulesByProject(project.ID)
 	if err != nil {
 		return err
 	}
@@ -55,7 +49,7 @@ func (c *DelegateRuleListCmd) Run(ctx context.Context) error {
 	}
 	var users []db.User
 	if len(userIDs) > 0 {
-		err = database.NewSelect().Model(&users).
+		err = q.Select(&users).
 			Where("id IN (?)", bun.List(userIDs)).
 			Scan(ctx)
 		if err != nil {
@@ -84,19 +78,18 @@ type DelegateRuleCreateCmd struct {
 }
 
 func (c *DelegateRuleCreateCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
-	var project db.Project
-	err := database.NewSelect().Model(&project).
-		Where("linkname = ?", c.Project).
-		Scan(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
+
+	project, err := q.GetProjectByLinkname(c.Project)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Project)
 	}
 
-	var user db.User
-	err = database.NewSelect().Model(&user).
-		Where("username = ?", c.User).
-		Scan(ctx)
+	user, err := q.GetUserByUsername(c.User)
 	if err != nil {
 		return fmt.Errorf("user %q not found", c.User)
 	}
@@ -107,7 +100,12 @@ func (c *DelegateRuleCreateCmd) Run(ctx context.Context) error {
 		Path:      c.Path,
 		Priority:  c.Priority,
 	}
-	err = db.New(ctx, database).Insert(&rule)
+	err = q.Insert(&rule)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
@@ -123,12 +121,14 @@ type DelegateRuleDeleteCmd struct {
 }
 
 func (c *DelegateRuleDeleteCmd) Run(ctx context.Context) error {
-	database := pw.GetDB(ctx)
+	q, err := pw.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+	defer q.Rollback()
 
 	var rule db.DelegationRule
-	err := database.NewSelect().Model(&rule).
-		Where("id = ?", c.ID).
-		Scan(ctx)
+	err = q.Select(&rule).Where("id = ?", c.ID).Scan(ctx)
 	if err != nil {
 		return fmt.Errorf("delegation rule %d not found", c.ID)
 	}
@@ -145,9 +145,12 @@ func (c *DelegateRuleDeleteCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	_, err = database.NewDelete().Model((*db.DelegationRule)(nil)).
-		Where("id = ?", rule.ID).
-		Exec(ctx)
+	_, err = q.Delete(&rule).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = q.Commit()
 	if err != nil {
 		return err
 	}
