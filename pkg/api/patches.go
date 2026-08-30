@@ -70,8 +70,8 @@ func (h *handler) ListPatches(
 ) (*ListPatchesOutput, error) {
 	base := h.apiBase(ctx)
 
-	idb := db.GetQueries(ctx).DB
-	sq := idb.NewSelect().Model((*db.Patch)(nil))
+	q := db.GetQueries(ctx)
+	sq := q.Select((*db.Patch)(nil))
 	sq = applyPatchFilters(sq, input)
 
 	total, err := sq.Count(ctx)
@@ -96,7 +96,7 @@ func (h *handler) ListPatches(
 		log.Errorf("list patches: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
-	if err := loadPatchDetails(db.GetQueries(ctx), patches); err != nil {
+	if err := loadPatchDetails(q, patches); err != nil {
 		log.Errorf("load patch details: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
@@ -136,7 +136,7 @@ func (h *handler) UpdatePatch(
 	q := db.GetQueries(ctx)
 
 	var patch db.Patch
-	if err := q.DB.NewSelect().Model(&patch).
+	if err := q.Select(&patch).
 		Relation("Submitter").Relation("Project").Relation("State").Relation("Delegate").
 		Where("patch.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
@@ -147,7 +147,7 @@ func (h *handler) UpdatePatch(
 	}
 
 	body := &input.Body
-	uq := q.DB.NewUpdate().Model(&patch).Where("id = ?", input.ID)
+	uq := q.Update(&patch).Where("id = ?", input.ID)
 	changed := false
 
 	oldStateID := patch.StateID
@@ -157,7 +157,7 @@ func (h *handler) UpdatePatch(
 
 	if body.State != nil {
 		var state db.State
-		err := q.DB.NewSelect().Model(&state).
+		err := q.Select(&state).
 			Where("LOWER(name) = LOWER(?)", *body.State).
 			Scan(ctx)
 		if err != nil {
@@ -215,7 +215,7 @@ func (h *handler) UpdatePatch(
 			var oldStateName string
 			if oldStateID != nil {
 				var s db.State
-				if q.DB.NewSelect().Model(&s).
+				if q.Select(&s).
 					Where("id = ?", *oldStateID).
 					Scan(ctx) == nil {
 					oldStateName = s.Name
@@ -253,7 +253,7 @@ func (h *handler) UpdatePatch(
 	}
 
 	// Re-fetch with relations to pick up any updated fields.
-	if err := q.DB.NewSelect().Model(&patch).
+	if err := q.Select(&patch).
 		Relation("Submitter").Relation("Project").Relation("State").Relation("Delegate").
 		Where("patch.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
@@ -273,18 +273,18 @@ func (h *handler) UpdatePatch(
 func (h *handler) GetPatch(
 	ctx context.Context, input *GetPatchInput,
 ) (*GetPatchOutput, error) {
-	idb := db.GetQueries(ctx).DB
+	q := db.GetQueries(ctx)
 	base := h.apiBase(ctx)
 
 	var patch db.Patch
-	if err := idb.NewSelect().Model(&patch).
+	if err := q.Select(&patch).
 		Relation("Submitter").Relation("Project").Relation("State").Relation("Delegate").
 		Where("patch.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
 	patches := []db.Patch{patch}
-	if err := loadPatchDetails(db.GetQueries(ctx), patches); err != nil {
+	if err := loadPatchDetails(q, patches); err != nil {
 		log.Errorf("load patch details: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}

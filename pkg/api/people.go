@@ -45,7 +45,7 @@ func (h *handler) ListPeople(
 ) (*ListPeopleOutput, error) {
 	base := h.apiBase(ctx)
 
-	sq := db.GetQueries(ctx).DB.NewSelect().Model((*db.Person)(nil))
+	sq := db.GetQueries(ctx).Select((*db.Person)(nil))
 	if input.Q != "" {
 		sq = sq.WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("person.name LIKE ?", "%"+input.Q+"%").
@@ -100,7 +100,7 @@ func (h *handler) GetPerson(
 	base := h.apiBase(ctx)
 
 	var person db.Person
-	if err := q.DB.NewSelect().Model(&person).
+	if err := q.Select(&person).
 		Relation("User").
 		Where("person.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")

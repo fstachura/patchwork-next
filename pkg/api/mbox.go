@@ -27,14 +27,14 @@ func (h *handler) patchMbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var patch db.Patch
-	if err := q.DB.NewSelect().Model(&patch).
+	if err := q.Select(&patch).
 		Where("id = ?", id).Scan(ctx); err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
 	var project db.Project
-	if err := q.DB.NewSelect().Model(&project).
+	if err := q.Select(&project).
 		Where("id = ?", patch.ProjectID).Scan(ctx); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -60,14 +60,14 @@ func (h *handler) coverMbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cover db.Cover
-	if err := q.DB.NewSelect().Model(&cover).
+	if err := q.Select(&cover).
 		Where("id = ?", id).Scan(ctx); err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
 	var project db.Project
-	if err := q.DB.NewSelect().Model(&project).
+	if err := q.Select(&project).
 		Where("id = ?", cover.ProjectID).Scan(ctx); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -93,7 +93,7 @@ func (h *handler) seriesMbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var series db.Series
-	if err := q.DB.NewSelect().Model(&series).
+	if err := q.Select(&series).
 		Where("id = ?", id).Scan(ctx); err != nil {
 		http.NotFound(w, r)
 		return
@@ -101,7 +101,7 @@ func (h *handler) seriesMbox(w http.ResponseWriter, r *http.Request) {
 
 	var project db.Project
 	if series.ProjectID != nil {
-		if err := q.DB.NewSelect().Model(&project).
+		if err := q.Select(&project).
 			Where("id = ?", *series.ProjectID).Scan(ctx); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -109,7 +109,7 @@ func (h *handler) seriesMbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var patches []db.Patch
-	if err := q.DB.NewSelect().Model(&patches).
+	if err := q.Select(&patches).
 		Where("series_id = ?", series.ID).
 		OrderBy("number", bun.OrderAsc).
 		Scan(ctx); err != nil {
@@ -142,21 +142,21 @@ func (h *handler) bundleMbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var bundle db.Bundle
-	if err := q.DB.NewSelect().Model(&bundle).
+	if err := q.Select(&bundle).
 		Where("id = ?", id).Scan(ctx); err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
 	var project db.Project
-	if err := q.DB.NewSelect().Model(&project).
+	if err := q.Select(&project).
 		Where("id = ?", bundle.ProjectID).Scan(ctx); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	var patches []db.Patch
-	if err := q.DB.NewSelect().Model(&patches).
+	if err := q.Select(&patches).
 		Join("JOIN bundle_patch AS bp ON bp.patch_id = patch.id").
 		Where("bp.bundle_id = ?", bundle.ID).
 		OrderBy("bp.order", bun.OrderAsc).

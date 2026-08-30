@@ -52,8 +52,8 @@ func (h *handler) ListCovers(
 ) (*ListCoversOutput, error) {
 	base := h.apiBase(ctx)
 
-	idb := db.GetQueries(ctx).DB
-	sq := idb.NewSelect().Model((*db.Cover)(nil))
+	q := db.GetQueries(ctx)
+	sq := q.Select((*db.Cover)(nil))
 	sq = applyCoverFilters(sq, input)
 
 	total, err := sq.Count(ctx)
@@ -78,7 +78,7 @@ func (h *handler) ListCovers(
 		log.Errorf("list covers: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
-	if err := db.GetQueries(ctx).LoadCoverSeries(covers); err != nil {
+	if err := q.LoadCoverSeries(covers); err != nil {
 		log.Errorf("load cover series: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
@@ -104,18 +104,18 @@ type GetCoverOutput struct {
 func (h *handler) GetCover(
 	ctx context.Context, input *GetCoverInput,
 ) (*GetCoverOutput, error) {
-	idb := db.GetQueries(ctx).DB
+	q := db.GetQueries(ctx)
 	base := h.apiBase(ctx)
 
 	var cover db.Cover
-	if err := idb.NewSelect().Model(&cover).
+	if err := q.Select(&cover).
 		Relation("Submitter").Relation("Project").
 		Where("cover.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
 	covers := []db.Cover{cover}
-	if err := db.GetQueries(ctx).LoadCoverSeries(covers); err != nil {
+	if err := q.LoadCoverSeries(covers); err != nil {
 		log.Errorf("load cover series: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}

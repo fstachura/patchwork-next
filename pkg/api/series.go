@@ -58,8 +58,8 @@ func (h *handler) ListSeries(
 ) (*ListSeriesOutput, error) {
 	base := h.apiBase(ctx)
 
-	idb := db.GetQueries(ctx).DB
-	sq := idb.NewSelect().Model((*db.Series)(nil))
+	q := db.GetQueries(ctx)
+	sq := q.Select((*db.Series)(nil))
 	sq = applySeriesFilters(sq, input)
 
 	total, err := sq.Count(ctx)
@@ -85,7 +85,7 @@ func (h *handler) ListSeries(
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
 
-	loadSeriesDetail(ctx, idb, base, series)
+	loadSeriesDetail(ctx, q, base, series)
 
 	resp := &ListSeriesOutput{
 		Link: buildLinkHeader(input.Page, perPage, total),
@@ -110,15 +110,17 @@ func (h *handler) LetSeries(
 ) (*GetSeriesOutput, error) {
 	base := h.apiBase(ctx)
 
+	q := db.GetQueries(ctx)
+
 	var s db.Series
-	if err := db.GetQueries(ctx).DB.NewSelect().Model(&s).
+	if err := q.Select(&s).
 		Relation("Submitter").Relation("Project").
 		Where("series.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
 	series := []db.Series{s}
-	loadSeriesDetail(ctx, db.GetQueries(ctx).DB, base, series)
+	loadSeriesDetail(ctx, q, base, series)
 
 	return &GetSeriesOutput{
 		Body: seriesToResponse(&series[0], base),
@@ -142,7 +144,7 @@ func (h *handler) UpdateSeries(
 	base := h.apiBase(ctx)
 
 	var s db.Series
-	if err := q.DB.NewSelect().Model(&s).
+	if err := q.Select(&s).
 		Where("id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
@@ -154,7 +156,7 @@ func (h *handler) UpdateSeries(
 	body := &input.Body
 
 	if body.Version != nil {
-		if _, err := q.DB.NewUpdate().Model(&s).
+		if _, err := q.Update(&s).
 			Set("version = ?", *body.Version).
 			Where("id = ?", input.ID).Exec(ctx); err != nil {
 			return nil, huma.Error400BadRequest("Update failed.")
@@ -163,28 +165,27 @@ func (h *handler) UpdateSeries(
 	}
 
 	if body.Metadata != nil {
-		if _, err := q.DB.NewDelete().Model((*db.SeriesMetadata)(nil)).
+		if _, err := q.Delete((*db.SeriesMetadata)(nil)).
 			Where("series_id = ?", input.ID).Exec(ctx); err != nil {
 			return nil, huma.Error400BadRequest("Update failed.")
 		}
 		for k, v := range *body.Metadata {
-			if _, err := q.DB.NewInsert().Model(&db.SeriesMetadata{
-				SeriesID: input.ID, Key: k, Value: v,
-			}).Exec(ctx); err != nil {
+			meta := db.SeriesMetadata{SeriesID: input.ID, Key: k, Value: v}
+			if err := q.Insert(&meta); err != nil {
 				return nil, huma.Error400BadRequest("Update failed.")
 			}
 		}
 	}
 
 	// Re-fetch with relations after update.
-	if err := q.DB.NewSelect().Model(&s).
+	if err := q.Select(&s).
 		Relation("Submitter").Relation("Project").
 		Where("series.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
 	series := []db.Series{s}
-	loadSeriesDetail(ctx, db.GetQueries(ctx).DB, base, series)
+	loadSeriesDetail(ctx, q, base, series)
 
 	return &GetSeriesOutput{
 		Body: seriesToResponse(&series[0], base),

@@ -45,11 +45,11 @@ func personToEmbedded(p *db.Person, base string) PersonEmbedded {
 	}
 }
 
-func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series []db.Series) {
+func loadSeriesDetail(ctx context.Context, q *db.Queries, base string, series []db.Series) {
 	for i := range series {
 		s := &series[i]
 
-		count, err := database.NewSelect().Model((*db.Patch)(nil)).
+		count, err := q.Select((*db.Patch)(nil)).
 			Where("series_id = ?", s.ID).
 			Count(ctx)
 		if err != nil {
@@ -60,14 +60,12 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 
 		if s.CoverLetterID != nil {
 			var cover db.Cover
-			if err := database.NewSelect().Model(&cover).
+			if err := q.Select(&cover).
 				Where("id = ?", *s.CoverLetterID).
 				Scan(ctx); err == nil {
 				s.CoverLetter = &cover
 			}
 		}
-
-		q := &db.Queries{Ctx: ctx, DB: database}
 
 		patches, err := q.ListSeriesPatches(s.ID)
 		if err != nil {
@@ -84,8 +82,7 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 		}
 
 		var depIDs []int
-		if err := database.NewSelect().
-			Model((*db.SeriesDependencies)(nil)).
+		if err := q.Select((*db.SeriesDependencies)(nil)).
 			Column("to_series_id").
 			Where("from_series_id = ?", s.ID).
 			Scan(ctx, &depIDs); err != nil {
@@ -97,8 +94,7 @@ func loadSeriesDetail(ctx context.Context, database bun.IDB, base string, series
 		}
 
 		var revIDs []int
-		if err := database.NewSelect().
-			Model((*db.SeriesDependencies)(nil)).
+		if err := q.Select((*db.SeriesDependencies)(nil)).
 			Column("from_series_id").
 			Where("to_series_id = ?", s.ID).
 			Scan(ctx, &revIDs); err != nil {

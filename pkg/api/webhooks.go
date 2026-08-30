@@ -80,7 +80,7 @@ func (h *handler) ListWebhooks(
 	}
 	offset := (input.Page - 1) * perPage
 
-	sq := db.GetQueries(ctx).DB.NewSelect().Model((*db.Webhook)(nil)).
+	sq := db.GetQueries(ctx).Select((*db.Webhook)(nil)).
 		Where("project_id = ?", input.ProjectID)
 
 	total, err := sq.Count(ctx)
@@ -125,7 +125,7 @@ func (h *handler) GetWebhook(
 	base := h.apiBase(ctx)
 
 	var hook db.Webhook
-	if err := q.DB.NewSelect().Model(&hook).
+	if err := q.Select(&hook).
 		Where("id = ?", input.WebhookID).
 		Where("project_id = ?", input.ProjectID).
 		Scan(ctx); err != nil {
@@ -198,7 +198,7 @@ func (h *handler) UpdateWebhook(
 
 	q := db.GetQueries(ctx)
 	var hook db.Webhook
-	if err := q.DB.NewSelect().Model(&hook).
+	if err := q.Select(&hook).
 		Where("id = ?", input.WebhookID).
 		Where("project_id = ?", input.ProjectID).
 		Scan(ctx); err != nil {
@@ -206,7 +206,7 @@ func (h *handler) UpdateWebhook(
 	}
 
 	body := &input.Body
-	uq := q.DB.NewUpdate().Model(&hook).Where("id = ?", input.WebhookID)
+	uq := q.Update(&hook).Where("id = ?", input.WebhookID)
 	if body.URL != nil {
 		uq = uq.Set("url = ?", *body.URL)
 	}
@@ -223,7 +223,7 @@ func (h *handler) UpdateWebhook(
 		return nil, huma.Error400BadRequest("Update failed.")
 	}
 
-	if err := q.DB.NewSelect().Model(&hook).Where("id = ?", input.WebhookID).Scan(ctx); err != nil {
+	if err := q.Select(&hook).Where("id = ?", input.WebhookID).Scan(ctx); err != nil {
 		log.Errorf("get webhook: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
@@ -249,7 +249,7 @@ func (h *handler) DeleteWebhook(
 	}
 
 	q := db.GetQueries(ctx)
-	if _, err := q.DB.NewDelete().Model((*db.Webhook)(nil)).
+	if _, err := q.Delete((*db.Webhook)(nil)).
 		Where("id = ?", input.WebhookID).
 		Where("project_id = ?", input.ProjectID).
 		Exec(ctx); err != nil {

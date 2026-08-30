@@ -49,8 +49,8 @@ func (h *handler) ListEvents(
 ) (*ListEventsOutput, error) {
 	base := h.apiBase(ctx)
 
-	idb := db.GetQueries(ctx).DB
-	sq := idb.NewSelect().Model((*db.Event)(nil))
+	q := db.GetQueries(ctx)
+	sq := q.Select((*db.Event)(nil))
 	sq = applyEventFilters(sq, input)
 
 	total, err := sq.Count(ctx)
@@ -85,7 +85,7 @@ func (h *handler) ListEvents(
 		Body: make([]EventResponse, len(events)),
 	}
 	for i := range events {
-		resp.Body[i] = eventToResponse(&events[i], ctx, idb, base)
+		resp.Body[i] = eventToResponse(&events[i], ctx, q, base)
 	}
 	return resp, nil
 }
@@ -122,12 +122,12 @@ func applyEventFilters(q *bun.SelectQuery, input *ListEventsInput) *bun.SelectQu
 	return q
 }
 
-func buildEventPayload(ctx context.Context, database bun.IDB, e *db.Event) map[string]any {
+func buildEventPayload(ctx context.Context, q *db.Queries, e *db.Event) map[string]any {
 	m := map[string]any{}
 
 	if e.PatchID != nil {
 		var p db.Patch
-		if err := database.NewSelect().Model(&p).
+		if err := q.Select(&p).
 			Where("id = ?", *e.PatchID).Scan(ctx); err == nil {
 			m["patch"] = map[string]any{
 				"id": p.ID, "msgid": p.Msgid,
@@ -137,7 +137,7 @@ func buildEventPayload(ctx context.Context, database bun.IDB, e *db.Event) map[s
 	}
 	if e.SeriesID != nil {
 		var s db.Series
-		if err := database.NewSelect().Model(&s).
+		if err := q.Select(&s).
 			Where("id = ?", *e.SeriesID).Scan(ctx); err == nil {
 			m["series"] = map[string]any{
 				"id": s.ID, "name": s.Name,
@@ -147,7 +147,7 @@ func buildEventPayload(ctx context.Context, database bun.IDB, e *db.Event) map[s
 	}
 	if e.CoverID != nil {
 		var c db.Cover
-		if err := database.NewSelect().Model(&c).
+		if err := q.Select(&c).
 			Where("id = ?", *e.CoverID).Scan(ctx); err == nil {
 			m["cover"] = map[string]any{
 				"id": c.ID, "msgid": c.Msgid,
@@ -157,7 +157,7 @@ func buildEventPayload(ctx context.Context, database bun.IDB, e *db.Event) map[s
 	}
 	if e.PatchCommentID != nil {
 		var c db.PatchComment
-		if err := database.NewSelect().Model(&c).
+		if err := q.Select(&c).
 			Where("id = ?", *e.PatchCommentID).Scan(ctx); err == nil {
 			m["comment"] = map[string]any{
 				"id": c.ID, "msgid": c.Msgid, "date": c.Date,
@@ -166,7 +166,7 @@ func buildEventPayload(ctx context.Context, database bun.IDB, e *db.Event) map[s
 	}
 	if e.CoverCommentID != nil {
 		var c db.CoverComment
-		if err := database.NewSelect().Model(&c).
+		if err := q.Select(&c).
 			Where("id = ?", *e.CoverCommentID).Scan(ctx); err == nil {
 			m["comment"] = map[string]any{
 				"id": c.ID, "msgid": c.Msgid, "date": c.Date,
@@ -175,14 +175,14 @@ func buildEventPayload(ctx context.Context, database bun.IDB, e *db.Event) map[s
 	}
 	if e.PreviousStateID != nil {
 		var s db.State
-		if err := database.NewSelect().Model(&s).
+		if err := q.Select(&s).
 			Where("id = ?", *e.PreviousStateID).Scan(ctx); err == nil {
 			m["previous_state"] = s.Slug
 		}
 	}
 	if e.CurrentStateID != nil {
 		var s db.State
-		if err := database.NewSelect().Model(&s).
+		if err := q.Select(&s).
 			Where("id = ?", *e.CurrentStateID).Scan(ctx); err == nil {
 			m["current_state"] = s.Slug
 		}
@@ -194,12 +194,12 @@ func buildEventPayload(ctx context.Context, database bun.IDB, e *db.Event) map[s
 	return m
 }
 
-func eventToResponse(e *db.Event, ctx context.Context, database bun.IDB, base string) EventResponse {
+func eventToResponse(e *db.Event, ctx context.Context, q *db.Queries, base string) EventResponse {
 	r := EventResponse{
 		ID:       e.ID,
 		Category: e.Category,
 		Date:     e.Date,
-		Payload:  buildEventPayload(ctx, database, e),
+		Payload:  buildEventPayload(ctx, q, e),
 	}
 	if e.Project != nil {
 		r.Project = projectToEmbedded(e.Project, base)

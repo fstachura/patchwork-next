@@ -74,20 +74,20 @@ func (h *handler) ListBundles(
 ) (*ListBundlesOutput, error) {
 	base := h.apiBase(ctx)
 
-	idb := db.GetQueries(ctx).DB
+	queries := db.GetQueries(ctx)
 
-	query := idb.NewSelect().Model((*db.Bundle)(nil))
+	q := queries.Select((*db.Bundle)(nil))
 
 	user := getAuthUser(ctx)
 	if user != nil {
-		query = query.Where("bundle.public = ? OR bundle.owner_id = ?", true, user.ID)
+		q = q.Where("bundle.public = ? OR bundle.owner_id = ?", true, user.ID)
 	} else {
-		query = query.Where("bundle.public = ?", true)
+		q = q.Where("bundle.public = ?", true)
 	}
 
-	query = applyBundleFilters(query, input)
+	q = applyBundleFilters(q, input)
 
-	total, err := query.Count(ctx)
+	total, err := q.Count(ctx)
 	if err != nil {
 		log.Errorf("count bundles: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
@@ -103,7 +103,7 @@ func (h *handler) ListBundles(
 	offset := (input.Page - 1) * perPage
 
 	var bundles []db.Bundle
-	if err := query.Model(&bundles).
+	if err := q.Model(&bundles).
 		Relation("Owner").Relation("Project").
 		OrderExpr("bundle.id ASC").Offset(offset).Limit(perPage).Scan(ctx); err != nil {
 		log.Errorf("list bundles: %v", err)
@@ -132,17 +132,17 @@ func (h *handler) GetBundle(
 	ctx context.Context, input *GetBundleInput,
 ) (*GetBundleOutput, error) {
 	base := h.apiBase(ctx)
-	idb := db.GetQueries(ctx).DB
+	q := db.GetQueries(ctx)
 
 	var bundle db.Bundle
-	if err := idb.NewSelect().Model(&bundle).
+	if err := q.Select(&bundle).
 		Relation("Owner").Relation("Project").
 		Where("bundle.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
 	bundles := []db.Bundle{bundle}
-	if err := db.GetQueries(ctx).LoadBundlePatches(bundles); err != nil {
+	if err := q.LoadBundlePatches(bundles); err != nil {
 		log.Errorf("load bundle patches: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
@@ -174,7 +174,7 @@ func (h *handler) CreateBundle(
 
 	q := db.GetQueries(ctx)
 	patchIDs := *body.Patches
-	projectID, err := validateBundlePatches(ctx, q.DB, patchIDs)
+	projectID, err := validateBundlePatches(ctx, q, patchIDs)
 	if err != nil {
 		return nil, huma.Error400BadRequest(err.Error())
 	}
@@ -194,12 +194,12 @@ func (h *handler) CreateBundle(
 		return nil, huma.Error400BadRequest("Bundle creation failed.")
 	}
 
-	if err := insertBundlePatches(ctx, q.DB, bundle.ID, patchIDs); err != nil {
+	if err := insertBundlePatches(ctx, q, bundle.ID, patchIDs); err != nil {
 		return nil, huma.Error400BadRequest("Bundle creation failed.")
 	}
 
 	// Re-fetch with relations.
-	if err := q.DB.NewSelect().Model(&bundle).
+	if err := q.Select(&bundle).
 		Relation("Owner").Relation("Project").
 		Where("bundle.id = ?", bundle.ID).Scan(ctx); err != nil {
 		return nil, huma.Error400BadRequest("Bundle creation failed.")
@@ -230,10 +230,9 @@ func (h *handler) UpdateBundle(
 		return nil, err
 	}
 
-	idb := db.GetQueries(ctx).DB
+	q := db.GetQueries(ctx)
 	var bundle db.Bundle
-	if err := idb.NewSelect().Model(&bundle).
-		Where("id = ?", input.ID).Scan(ctx); err != nil {
+	if err := q.Select(&bundle).Where("id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
@@ -247,21 +246,21 @@ func (h *handler) UpdateBundle(
 		if len(*body.Patches) == 0 {
 			return nil, huma.Error400BadRequest("Bundles cannot be empty.")
 		}
-		projectID, err := validateBundlePatches(ctx, idb, *body.Patches)
+		projectID, err := validateBundlePatches(ctx, q, *body.Patches)
 		if err != nil {
 			return nil, huma.Error400BadRequest(err.Error())
 		}
-		if _, err := idb.NewDelete().Model((*db.BundlePatch)(nil)).
+		if _, err := q.Delete((*db.BundlePatch)(nil)).
 			Where("bundle_id = ?", input.ID).Exec(ctx); err != nil {
 			return nil, huma.Error400BadRequest("Update failed.")
 		}
-		if err := insertBundlePatches(ctx, idb, input.ID, *body.Patches); err != nil {
+		if err := insertBundlePatches(ctx, q, input.ID, *body.Patches); err != nil {
 			return nil, huma.Error400BadRequest("Update failed.")
 		}
 		bundle.ProjectID = projectID
 	}
 
-	up := idb.NewUpdate().Model(&bundle).Where("id = ?", input.ID)
+	up := q.Update(&bundle).Where("id = ?", input.ID)
 	if body.Name != nil {
 		up = up.Set("name = ?", *body.Name)
 	}
@@ -275,7 +274,7 @@ func (h *handler) UpdateBundle(
 		return nil, huma.Error400BadRequest("Update failed.")
 	}
 
-	if err := idb.NewSelect().Model(&bundle).
+	if err := q.Select(&bundle).
 		Relation("Owner").Relation("Project").
 		Where("bundle.id = ?", input.ID).Scan(ctx); err != nil {
 		log.Errorf("get bundle: %v", err)
@@ -283,7 +282,7 @@ func (h *handler) UpdateBundle(
 	}
 
 	bundles := []db.Bundle{bundle}
-	if err := db.GetQueries(ctx).LoadBundlePatches(bundles); err != nil {
+	if err := q.LoadBundlePatches(bundles); err != nil {
 		log.Errorf("load bundle patches: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
@@ -308,11 +307,10 @@ func (h *handler) DeleteBundle(
 		return nil, err
 	}
 
-	idb := db.GetQueries(ctx).DB
+	q := db.GetQueries(ctx)
 
 	var bundle db.Bundle
-	if err := idb.NewSelect().Model(&bundle).
-		Where("id = ?", input.ID).Scan(ctx); err != nil {
+	if err := q.Select(&bundle).Where("id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
@@ -320,12 +318,7 @@ func (h *handler) DeleteBundle(
 		return nil, ForbiddenErr
 	}
 
-	if _, err := idb.NewDelete().Model((*db.BundlePatch)(nil)).
-		Where("bundle_id = ?", input.ID).Exec(ctx); err != nil {
-		return nil, huma.Error400BadRequest("Delete failed.")
-	}
-	if _, err := idb.NewDelete().Model((*db.Bundle)(nil)).
-		Where("id = ?", input.ID).Exec(ctx); err != nil {
+	if _, err := q.Delete(&bundle).WherePK().Exec(ctx); err != nil {
 		return nil, huma.Error400BadRequest("Delete failed.")
 	}
 
@@ -353,9 +346,9 @@ func applyBundleFilters(q *bun.SelectQuery, input *ListBundlesInput) *bun.Select
 	return q
 }
 
-func validateBundlePatches(ctx context.Context, idb bun.IDB, patchIDs []int) (int, error) {
+func validateBundlePatches(ctx context.Context, q *db.Queries, patchIDs []int) (int, error) {
 	var projectIDs []int
-	idb.NewSelect().Model((*db.Patch)(nil)).
+	q.Select((*db.Patch)(nil)).
 		Column("project_id").
 		Where("id IN ?", bun.Tuple(patchIDs)).
 		Scan(ctx, &projectIDs)
@@ -374,14 +367,14 @@ func validateBundlePatches(ctx context.Context, idb bun.IDB, patchIDs []int) (in
 	return projectID, nil
 }
 
-func insertBundlePatches(ctx context.Context, idb bun.IDB, bundleID int, patchIDs []int) error {
+func insertBundlePatches(ctx context.Context, q *db.Queries, bundleID int, patchIDs []int) error {
 	for i, pid := range patchIDs {
 		bp := db.BundlePatch{
 			BundleID: bundleID,
 			PatchID:  pid,
 			Order:    int(i),
 		}
-		if _, err := idb.NewInsert().Model(&bp).Exec(ctx); err != nil {
+		if err := q.Insert(&bp); err != nil {
 			return err
 		}
 	}

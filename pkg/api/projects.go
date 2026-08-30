@@ -107,8 +107,8 @@ func (h *handler) ListProjects(
 ) (*ListProjectsOutput, error) {
 	base := h.apiBase(ctx)
 
-	idb := db.GetQueries(ctx).DB
-	sq := idb.NewSelect().Model((*db.Project)(nil))
+	q := db.GetQueries(ctx)
+	sq := q.Select((*db.Project)(nil))
 	if input.Q != "" {
 		sq = sq.Where("name LIKE ?", "%"+input.Q+"%")
 	}
@@ -133,7 +133,7 @@ func (h *handler) ListProjects(
 		log.Errorf("list projects: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
-	if err := db.GetQueries(ctx).LoadProjectMaintainers(projects); err != nil {
+	if err := q.LoadProjectMaintainers(projects); err != nil {
 		log.Errorf("load project maintainers: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
@@ -174,17 +174,17 @@ func (h *handler) UpdateProject(
 
 	var project db.Project
 	if id, err := strconv.ParseInt(input.ID, 10, 32); err == nil {
-		err = q.DB.NewSelect().Model(&project).
+		err = q.Select(&project).
 			Where("id = ?", id).Scan(ctx)
 		if err != nil {
-			err = q.DB.NewSelect().Model(&project).
+			err = q.Select(&project).
 				Where("linkname = ?", input.ID).Scan(ctx)
 		}
 		if err != nil {
 			return nil, huma.Error404NotFound("Not found.")
 		}
 	} else {
-		if err := q.DB.NewSelect().Model(&project).
+		if err := q.Select(&project).
 			Where("linkname = ?", input.ID).Scan(ctx); err != nil {
 			return nil, huma.Error404NotFound("Not found.")
 		}
@@ -195,7 +195,7 @@ func (h *handler) UpdateProject(
 	}
 
 	body := &input.Body
-	uq := q.DB.NewUpdate().Model(&project).Where("id = ?", project.ID)
+	uq := q.Update(&project).Where("id = ?", project.ID)
 	if body.WebURL != nil {
 		uq = uq.Set("web_url = ?", *body.WebURL)
 	}
@@ -218,7 +218,7 @@ func (h *handler) UpdateProject(
 		return nil, huma.Error400BadRequest("Update failed.")
 	}
 
-	if err := q.DB.NewSelect().Model(&project).Where("id = ?", project.ID).Scan(ctx); err != nil {
+	if err := q.Select(&project).Where("id = ?", project.ID).Scan(ctx); err != nil {
 		log.Errorf("get project: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}
@@ -241,24 +241,24 @@ func (h *handler) GetProject(
 
 	var project db.Project
 	if id, err := strconv.ParseInt(input.ID, 10, 32); err == nil {
-		err = q.DB.NewSelect().Model(&project).
+		err = q.Select(&project).
 			Where("id = ?", id).Scan(ctx)
 		if err != nil {
-			err = q.DB.NewSelect().Model(&project).
+			err = q.Select(&project).
 				Where("linkname = ?", input.ID).Scan(ctx)
 		}
 		if err != nil {
 			return nil, huma.Error404NotFound("Not found.")
 		}
 	} else {
-		if err := q.DB.NewSelect().Model(&project).
+		if err := q.Select(&project).
 			Where("linkname = ?", input.ID).Scan(ctx); err != nil {
 			return nil, huma.Error404NotFound("Not found.")
 		}
 	}
 
 	projects := []db.Project{project}
-	if err := db.New(ctx, h.db).LoadProjectMaintainers(projects); err != nil {
+	if err := q.LoadProjectMaintainers(projects); err != nil {
 		log.Errorf("load project maintainers: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
 	}

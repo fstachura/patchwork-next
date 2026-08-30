@@ -70,10 +70,10 @@ type ListChecksOutput struct {
 func (h *handler) ListChecks(
 	ctx context.Context, input *ListChecksInput,
 ) (*ListChecksOutput, error) {
-	idb := db.GetQueries(ctx).DB
+	q := db.GetQueries(ctx)
 	base := h.apiBase(ctx)
 
-	total, err := idb.NewSelect().Model((*db.Check)(nil)).
+	total, err := q.Select((*db.Check)(nil)).
 		Where("patch_id = ?", input.PatchID).
 		Count(ctx)
 	if err != nil {
@@ -91,7 +91,7 @@ func (h *handler) ListChecks(
 	offset := (input.Page - 1) * perPage
 
 	var checks []db.Check
-	if err := idb.NewSelect().Model(&checks).
+	if err := q.Select(&checks).
 		Relation("User").
 		Where(`ci_check.patch_id = ?`, input.PatchID).
 		OrderExpr(`ci_check.id ASC`).Offset(offset).Limit(perPage).Scan(ctx); err != nil {
@@ -125,7 +125,7 @@ func (h *handler) GetCheck(
 	base := h.apiBase(ctx)
 
 	var c db.Check
-	err := db.GetQueries(ctx).DB.NewSelect().Model(&c).
+	err := db.GetQueries(ctx).Select(&c).
 		Relation("User").
 		Where(`ci_check.id = ?`, input.CheckID).
 		Where(`ci_check.patch_id = ?`, input.PatchID).
@@ -163,7 +163,7 @@ func (h *handler) CreateCheck(
 	}
 
 	var patch db.Patch
-	if err := q.DB.NewSelect().Model(&patch).
+	if err := q.Select(&patch).
 		Where("id = ?", input.PatchID).
 		Column("id", "project_id").Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
@@ -191,7 +191,7 @@ func (h *handler) CreateCheck(
 	// update it instead of creating a duplicate
 	var check db.Check
 	var eventCategory string
-	err = q.DB.NewSelect().Model(&check).
+	err = q.Select(&check).
 		Where("patch_id = ?", input.PatchID).
 		Where("context = ?", input.Body.Context).
 		Where("user_id = ?", user.ID).
@@ -202,7 +202,7 @@ func (h *handler) CreateCheck(
 		check.Date = time.Now()
 		check.TargetURL = targetURL
 		check.Description = description
-		_, err = q.DB.NewUpdate().Model(&check).
+		_, err = q.Update(&check).
 			Where("id = ?", check.ID).
 			Set("state = ?", check.State).
 			Set("date = ?", check.Date).
@@ -264,7 +264,7 @@ func (h *handler) UpdateCheck(
 	}
 
 	var check db.Check
-	if err := q.DB.NewSelect().Model(&check).
+	if err := q.Select(&check).
 		Relation("User").
 		Where("ci_check.id = ?", input.CheckID).
 		Where("ci_check.patch_id = ?", input.PatchID).
@@ -273,7 +273,7 @@ func (h *handler) UpdateCheck(
 	}
 
 	var patch db.Patch
-	if err := q.DB.NewSelect().Model(&patch).
+	if err := q.Select(&patch).
 		Where("id = ?", input.PatchID).
 		Column("id", "project_id").Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
@@ -288,7 +288,7 @@ func (h *handler) UpdateCheck(
 		return nil, huma.Error400BadRequest("Invalid state.")
 	}
 
-	uq := q.DB.NewUpdate().Model(&check).Where("id = ?", check.ID).
+	uq := q.Update(&check).Where("id = ?", check.ID).
 		Set("state = ?", stateVal).
 		Set("date = ?", time.Now())
 	if input.Body.TargetURL != nil {
@@ -311,7 +311,7 @@ func (h *handler) UpdateCheck(
 	})
 
 	// re-fetch
-	if err := q.DB.NewSelect().Model(&check).Relation("User").
+	if err := q.Select(&check).Relation("User").
 		Where("ci_check.id = ?", check.ID).Scan(ctx); err != nil {
 		log.Errorf("get check: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")

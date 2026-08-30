@@ -63,7 +63,7 @@ func (h *handler) ListUsers(
 
 	base := h.apiBase(ctx)
 
-	sq := db.GetQueries(ctx).DB.NewSelect().Model((*db.User)(nil))
+	sq := db.GetQueries(ctx).Select((*db.User)(nil))
 	if input.Q != "" {
 		sq = sq.WhereGroup(" AND ", func(sq *bun.SelectQuery) *bun.SelectQuery {
 			return sq.Where("username LIKE ?", "%"+input.Q+"%").
@@ -124,7 +124,7 @@ func (h *handler) GetUserDetail(
 	base := h.apiBase(ctx)
 
 	var user db.User
-	if err := q.DB.NewSelect().Model(&user).
+	if err := q.Select(&user).
 		Where("id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
@@ -162,13 +162,13 @@ func (h *handler) UpdateUser(
 	}
 
 	var user db.User
-	if err := q.DB.NewSelect().Model(&user).
+	if err := q.Select(&user).
 		Where("id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
 	body := &input.Body
-	uq := q.DB.NewUpdate().Model(&user).Where("id = ?", input.ID)
+	uq := q.Update(&user).Where("id = ?", input.ID)
 	if body.FirstName != nil {
 		uq = uq.Set("first_name = ?", *body.FirstName)
 		user.FirstName = *body.FirstName

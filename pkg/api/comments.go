@@ -68,7 +68,7 @@ func (h *handler) ListPatchComments(
 ) (*ListPatchCommentsOutput, error) {
 	base := h.apiBase(ctx)
 
-	q := db.GetQueries(ctx).DB.NewSelect().Model((*db.PatchComment)(nil)).
+	q := db.GetQueries(ctx).Select((*db.PatchComment)(nil)).
 		Where("patch_comment.patch_id = ?", input.ID)
 
 	total, err := q.Count(ctx)
@@ -119,7 +119,7 @@ func (h *handler) GetPatchComment(
 	base := h.apiBase(ctx)
 
 	var c db.PatchComment
-	err := db.GetQueries(ctx).DB.NewSelect().Model(&c).
+	err := db.GetQueries(ctx).Select(&c).
 		Relation("Submitter").
 		Where("patch_comment.id = ?", input.CommentID).
 		Where("patch_comment.patch_id = ?", input.PatchID).
@@ -159,7 +159,7 @@ func (h *handler) UpdatePatchComment(
 	q := db.GetQueries(ctx)
 
 	var c db.PatchComment
-	err = q.DB.NewSelect().Model(&c).
+	err = q.Select(&c).
 		Relation("Submitter").
 		Where("patch_comment.id = ?", input.CommentID).
 		Where("patch_comment.patch_id = ?", input.PatchID).
@@ -169,7 +169,7 @@ func (h *handler) UpdatePatchComment(
 	}
 
 	var patch db.Patch
-	if err := q.DB.NewSelect().Model(&patch).
+	if err := q.Select(&patch).
 		Where("id = ?", input.PatchID).
 		Column("id", "project_id").Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
@@ -180,7 +180,7 @@ func (h *handler) UpdatePatchComment(
 	}
 
 	if input.Body.Addressed != nil {
-		if _, err := q.DB.NewUpdate().Model((*db.PatchComment)(nil)).
+		if _, err := q.Update((*db.PatchComment)(nil)).
 			Set("addressed = ?", *input.Body.Addressed).
 			Where("id = ?", input.CommentID).
 			Exec(ctx); err != nil {
@@ -214,7 +214,7 @@ func (h *handler) ListCoverComments(
 ) (*ListCoverCommentsOutput, error) {
 	base := h.apiBase(ctx)
 
-	q := db.GetQueries(ctx).DB.NewSelect().Model((*db.CoverComment)(nil)).
+	q := db.GetQueries(ctx).Select((*db.CoverComment)(nil)).
 		Where("cover_comment.cover_id = ?", input.ID)
 
 	total, err := q.Count(ctx)
@@ -265,7 +265,7 @@ func (h *handler) GetCoverComment(
 	base := h.apiBase(ctx)
 
 	var c db.CoverComment
-	err := db.GetQueries(ctx).DB.NewSelect().Model(&c).
+	err := db.GetQueries(ctx).Select(&c).
 		Relation("Submitter").
 		Where("cover_comment.id = ?", input.CommentID).
 		Where("cover_comment.cover_id = ?", input.CoverID).
@@ -305,7 +305,7 @@ func (h *handler) UpdateCoverComment(
 	q := db.GetQueries(ctx)
 
 	var c db.CoverComment
-	err = q.DB.NewSelect().Model(&c).
+	err = q.Select(&c).
 		Relation("Submitter").
 		Where("cover_comment.id = ?", input.CommentID).
 		Where("cover_comment.cover_id = ?", input.CoverID).
@@ -315,7 +315,7 @@ func (h *handler) UpdateCoverComment(
 	}
 
 	var cover db.Cover
-	if err := q.DB.NewSelect().Model(&cover).
+	if err := q.Select(&cover).
 		Where("id = ?", input.CoverID).
 		Column("id", "project_id").Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
@@ -326,7 +326,7 @@ func (h *handler) UpdateCoverComment(
 	}
 
 	if input.Body.Addressed != nil {
-		if _, err := q.DB.NewUpdate().Model((*db.CoverComment)(nil)).
+		if _, err := q.Update((*db.CoverComment)(nil)).
 			Set("addressed = ?", *input.Body.Addressed).
 			Where("id = ?", input.CommentID).
 			Exec(ctx); err != nil {
