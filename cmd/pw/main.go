@@ -8,8 +8,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/alecthomas/kong"
 
@@ -63,7 +65,8 @@ func main() {
 		k.Stderr = log.ErrLogger().Writer()
 	}
 
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 	ctx = pw.WithConfig(ctx, &cli.Config)
 	ctx = pw.WithVersion(ctx, Version)
 
