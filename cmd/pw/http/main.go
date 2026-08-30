@@ -45,7 +45,7 @@ func (c *CLI) Run(ctx context.Context) error {
 	mbox.Version = version
 
 	router := web.NewRouter(cfg, database, bus, version)
-	router.Mount("/", api.NewRouter(cfg, database, cfg.Http.BaseURL, bus))
+	router.Mount("/", api.NewRouter(cfg, database, bus))
 
 	srv := &http.Server{
 		Addr:     cfg.Http.Listen,

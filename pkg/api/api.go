@@ -80,9 +80,8 @@ var supportedVersions = []apiVersion{
 }
 
 type handler struct {
-	cfg     *config.Config
-	db      *bun.DB
-	baseURL string
+	cfg *config.Config
+	db  *bun.DB
 }
 
 var (
@@ -111,9 +110,9 @@ func (h *handler) requireMaintainer(ctx context.Context, projectID int) (*db.Use
 
 func (h *handler) apiBase(ctx context.Context) string {
 	ver := getVersion(ctx)
-	if h.baseURL != "" {
+	if h.cfg.Http.BaseURL != "" {
 		return fmt.Sprintf("%s/api/%d.%d",
-			strings.TrimRight(h.baseURL, "/"),
+			strings.TrimRight(h.cfg.Http.BaseURL, "/"),
 			ver.Major, ver.Minor)
 	}
 	r := getRequest(ctx)
@@ -170,13 +169,13 @@ func versionTransformer(ctx huma.Context, status string, v any) (any, error) {
 	return stripVersionedFields(v, ver), nil
 }
 
-func NewRouter(cfg *config.Config, database *bun.DB, baseURL string, bus db.EventBus) chi.Router {
+func NewRouter(cfg *config.Config, database *bun.DB, bus db.EventBus) chi.Router {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.StripSlashes)
 	r.Use(db.Middleware(database, bus))
 
-	h := &handler{cfg: cfg, db: database, baseURL: baseURL}
+	h := &handler{cfg: cfg, db: database}
 
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

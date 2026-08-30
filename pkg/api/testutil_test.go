@@ -80,7 +80,7 @@ func newTestServer(t *testing.T) *testServer {
 	bus := events.Start(context.Background(), database)
 	t.Cleanup(bus.Shutdown)
 
-	router := NewRouter(cfg, database, "", bus)
+	router := NewRouter(cfg, database, bus)
 	srv := httptest.NewServer(router)
 	t.Cleanup(srv.Close)
 
