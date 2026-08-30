@@ -7,6 +7,7 @@ package config
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -27,11 +28,11 @@ type CLI struct {
 	URL   URLCmd   `cmd:"" help:"Generate a database connection URL."`
 }
 
-func (c *PrintCmd) Run(ctx *pw.Context) error {
-	return config.Generate(ctx.Config, os.Stdout)
+func (c *PrintCmd) Run(ctx context.Context) error {
+	return config.Generate(pw.GetConfig(ctx), os.Stdout)
 }
 
-func (c *URLCmd) Run(*pw.Context) error {
+func (c *URLCmd) Run(context.Context) error {
 	reader := bufio.NewReader(os.Stdin)
 
 	scheme, err := prompt(reader, "Database type (postgres, mysql, sqlite)", "postgres")

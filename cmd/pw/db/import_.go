@@ -7,6 +7,7 @@ package db
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"strings"
 
@@ -16,9 +17,11 @@ import (
 
 type ImportCmd struct{}
 
-func (c *ImportCmd) Run(ctx *pw.Context) error {
+func (c *ImportCmd) Run(ctx context.Context) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
+
+	db := pw.GetDB(ctx)
 
 	var stmt strings.Builder
 	for scanner.Scan() {
@@ -28,7 +31,7 @@ func (c *ImportCmd) Run(ctx *pw.Context) error {
 		}
 		stmt.WriteString(line)
 		if strings.HasSuffix(line, ";") {
-			if _, err := ctx.DB.ExecContext(ctx, stmt.String()); err != nil {
+			if _, err := db.ExecContext(ctx, stmt.String()); err != nil {
 				return err
 			}
 			stmt.Reset()
@@ -38,7 +41,7 @@ func (c *ImportCmd) Run(ctx *pw.Context) error {
 		return err
 	}
 	if stmt.Len() > 0 {
-		if _, err := ctx.DB.ExecContext(ctx, stmt.String()); err != nil {
+		if _, err := db.ExecContext(ctx, stmt.String()); err != nil {
 			return err
 		}
 	}

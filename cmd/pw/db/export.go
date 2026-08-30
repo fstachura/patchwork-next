@@ -6,6 +6,7 @@
 package db
 
 import (
+	"context"
 	"os"
 
 	"github.com/getpatchwork/patchwork/cmd/pw/pw"
@@ -16,6 +17,6 @@ type ExportCmd struct {
 	Dialect string `help:"Target dialect. Detected from the database URL by default." enum:"auto,postgres,mysql,sqlite" default:"auto"`
 }
 
-func (c *ExportCmd) Run(ctx *pw.Context) error {
-	return db.Export(ctx, ctx.DB, os.Stdout, c.Dialect)
+func (c *ExportCmd) Run(ctx context.Context) error {
+	return db.Export(ctx, pw.GetDB(ctx), os.Stdout, c.Dialect)
 }

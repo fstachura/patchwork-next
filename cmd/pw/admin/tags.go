@@ -7,6 +7,7 @@ package admin
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -24,9 +25,11 @@ type TagCmd struct {
 
 type TagListCmd struct{}
 
-func (c *TagListCmd) Run(ctx *pw.Context) error {
+func (c *TagListCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var tags []db.Tag
-	err := ctx.DB.NewSelect().Model(&tags).
+	err := database.NewSelect().Model(&tags).
 		OrderExpr("id ASC").
 		Scan(ctx)
 	if err != nil {
@@ -49,14 +52,16 @@ type TagCreateCmd struct {
 	ShowColumn bool   `name:"show-column" default:"true" help:"Show in list columns."`
 }
 
-func (c *TagCreateCmd) Run(ctx *pw.Context) error {
+func (c *TagCreateCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	tag := db.Tag{
 		Name:       c.Name,
 		Pattern:    c.Pattern,
 		Abbrev:     c.Abbrev,
 		ShowColumn: c.ShowColumn,
 	}
-	err := db.New(ctx, ctx.DB).Insert(&tag)
+	err := db.New(ctx, database).Insert(&tag)
 	if err != nil {
 		return err
 	}
@@ -70,9 +75,11 @@ type TagDeleteCmd struct {
 	Name  string `arg:"" help:"Tag name to delete."`
 }
 
-func (c *TagDeleteCmd) Run(ctx *pw.Context) error {
+func (c *TagDeleteCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var tag db.Tag
-	err := ctx.DB.NewSelect().Model(&tag).
+	err := database.NewSelect().Model(&tag).
 		Where("name = ?", c.Name).
 		Scan(ctx)
 	if err != nil {
@@ -90,7 +97,7 @@ func (c *TagDeleteCmd) Run(ctx *pw.Context) error {
 		}
 	}
 
-	_, err = ctx.DB.NewDelete().Model((*db.Tag)(nil)).
+	_, err = database.NewDelete().Model((*db.Tag)(nil)).
 		Where("id = ?", tag.ID).
 		Exec(ctx)
 	if err != nil {

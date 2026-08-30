@@ -7,6 +7,7 @@ package admin
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -28,9 +29,10 @@ type DelegateRuleListCmd struct {
 	Project string `arg:"" help:"Project linkname."`
 }
 
-func (c *DelegateRuleListCmd) Run(ctx *pw.Context) error {
+func (c *DelegateRuleListCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Project).
 		Scan(ctx)
 	if err != nil {
@@ -38,7 +40,7 @@ func (c *DelegateRuleListCmd) Run(ctx *pw.Context) error {
 	}
 
 	var rules []db.DelegationRule
-	err = ctx.DB.NewSelect().Model(&rules).
+	err = database.NewSelect().Model(&rules).
 		Where("project_id = ?", project.ID).
 		OrderExpr("priority ASC").
 		Scan(ctx)
@@ -53,7 +55,7 @@ func (c *DelegateRuleListCmd) Run(ctx *pw.Context) error {
 	}
 	var users []db.User
 	if len(userIDs) > 0 {
-		err = ctx.DB.NewSelect().Model(&users).
+		err = database.NewSelect().Model(&users).
 			Where("id IN (?)", bun.List(userIDs)).
 			Scan(ctx)
 		if err != nil {
@@ -81,9 +83,10 @@ type DelegateRuleCreateCmd struct {
 	Priority int    `name:"priority" default:"0" help:"Rule priority (lower = higher priority)."`
 }
 
-func (c *DelegateRuleCreateCmd) Run(ctx *pw.Context) error {
+func (c *DelegateRuleCreateCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Project).
 		Scan(ctx)
 	if err != nil {
@@ -91,7 +94,7 @@ func (c *DelegateRuleCreateCmd) Run(ctx *pw.Context) error {
 	}
 
 	var user db.User
-	err = ctx.DB.NewSelect().Model(&user).
+	err = database.NewSelect().Model(&user).
 		Where("username = ?", c.User).
 		Scan(ctx)
 	if err != nil {
@@ -104,7 +107,7 @@ func (c *DelegateRuleCreateCmd) Run(ctx *pw.Context) error {
 		Path:      c.Path,
 		Priority:  c.Priority,
 	}
-	err = db.New(ctx, ctx.DB).Insert(&rule)
+	err = db.New(ctx, database).Insert(&rule)
 	if err != nil {
 		return err
 	}
@@ -119,9 +122,11 @@ type DelegateRuleDeleteCmd struct {
 	ID    int  `arg:"" help:"Rule ID to delete."`
 }
 
-func (c *DelegateRuleDeleteCmd) Run(ctx *pw.Context) error {
+func (c *DelegateRuleDeleteCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var rule db.DelegationRule
-	err := ctx.DB.NewSelect().Model(&rule).
+	err := database.NewSelect().Model(&rule).
 		Where("id = ?", c.ID).
 		Scan(ctx)
 	if err != nil {
@@ -140,7 +145,7 @@ func (c *DelegateRuleDeleteCmd) Run(ctx *pw.Context) error {
 		}
 	}
 
-	_, err = ctx.DB.NewDelete().Model((*db.DelegationRule)(nil)).
+	_, err = database.NewDelete().Model((*db.DelegationRule)(nil)).
 		Where("id = ?", rule.ID).
 		Exec(ctx)
 	if err != nil {

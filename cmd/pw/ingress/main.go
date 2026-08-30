@@ -21,10 +21,8 @@ import (
 	"github.com/emersion/go-mbox"
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
-	"github.com/uptrace/bun"
 
 	"github.com/getpatchwork/patchwork/cmd/pw/pw"
-	"github.com/getpatchwork/patchwork/pkg/config"
 	"github.com/getpatchwork/patchwork/pkg/db"
 	"github.com/getpatchwork/patchwork/pkg/db/migrations"
 	"github.com/getpatchwork/patchwork/pkg/events"
@@ -38,18 +36,21 @@ type CLI struct {
 	ListID string `short:"l" help:"Force List-ID value instead of reading it from email headers."`
 }
 
-func (c *CLI) Run(ctx *pw.Context) error {
-	if ctx.Config.Database.AutoSync {
-		if err := migrations.RunMigrations(ctx, ctx.DB); err != nil {
+func (c *CLI) Run(ctx context.Context) error {
+	cfg := pw.GetConfig(ctx)
+	database := pw.GetDB(ctx)
+
+	if cfg.Database.AutoSync {
+		if err := migrations.RunMigrations(ctx, database); err != nil {
 			return err
 		}
-	} else if err := migrations.CheckSchemaVersion(ctx, ctx.DB); err != nil {
+	} else if err := migrations.CheckSchemaVersion(ctx, database); err != nil {
 		return err
 	}
 
-	bus := events.Start(ctx, ctx.DB)
+	bus := events.Start(ctx, database)
 	defer bus.Shutdown()
-	ctx.Context = db.WithBus(ctx.Context, bus)
+	ctx = db.WithBus(ctx, bus)
 
 	if c.Stdin || c.Mbox {
 		var dupErr *mail.DuplicateMailError
@@ -63,7 +64,7 @@ func (c *CLI) Run(ctx *pw.Context) error {
 				if err != nil {
 					break
 				}
-				err = mail.ParseMail(ctx.Context, ctx.DB, msg, c.ListID)
+				err = mail.ParseMail(ctx, database, msg, c.ListID)
 				if errors.As(err, &dupErr) {
 					log.Debugf("ignoring %s", err)
 				} else if err != nil {
@@ -71,7 +72,7 @@ func (c *CLI) Run(ctx *pw.Context) error {
 				}
 			}
 		} else {
-			err = mail.ParseMail(ctx.Context, ctx.DB, os.Stdin, c.ListID)
+			err = mail.ParseMail(ctx, database, os.Stdin, c.ListID)
 		}
 		if errors.As(err, &dupErr) {
 			log.Debugf("ignoring %s", err)
@@ -81,14 +82,7 @@ func (c *CLI) Run(ctx *pw.Context) error {
 		return nil
 	}
 
-	be := &backend{
-		ctx:      ctx.Context,
-		database: ctx.DB,
-		cfg:      ctx.Config,
-		listID:   c.ListID,
-	}
-
-	sock, srv, err := startSMTPServer(ctx.Config, be)
+	sock, srv, err := c.startSMTPServer(ctx)
 	if err != nil {
 		return fmt.Errorf("smtp: %w", err)
 	}
@@ -97,7 +91,7 @@ func (c *CLI) Run(ctx *pw.Context) error {
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		log.Noticef("patchwork %s listening on smtp://%s", ctx.Version, sock.Addr())
+		log.Noticef("patchwork %s listening on smtp://%s", pw.GetVersion(ctx), sock.Addr())
 		if e := srv.Serve(sock); e != nil && !errors.Is(e, net.ErrClosed) {
 			err = fmt.Errorf("serve: %w", e)
 			done <- syscall.SIGCHLD
@@ -117,8 +111,9 @@ func (c *CLI) Run(ctx *pw.Context) error {
 	return err
 }
 
-func startSMTPServer(cfg *config.Config, be smtp.Backend) (net.Listener, *smtp.Server, error) {
-	s := smtp.NewServer(be)
+func (c *CLI) startSMTPServer(ctx context.Context) (net.Listener, *smtp.Server, error) {
+	cfg := pw.GetConfig(ctx)
+	s := smtp.NewServer(&backend{ctx: ctx, listID: c.ListID})
 	s.Addr = cfg.Ingress.Listen
 	s.Domain = "localhost"
 	s.ReadTimeout = 30 * time.Second
@@ -140,10 +135,8 @@ func startSMTPServer(cfg *config.Config, be smtp.Backend) (net.Listener, *smtp.S
 }
 
 type backend struct {
-	ctx      context.Context
-	database *bun.DB
-	cfg      *config.Config
-	listID   string
+	ctx    context.Context
+	listID string
 }
 
 func (b *backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
@@ -212,7 +205,7 @@ func (s *session) Data(r io.Reader) error {
 		entity.Header.Get("Subject"))
 
 	err = mail.ParseMail(
-		s.backend.ctx, s.backend.database,
+		s.backend.ctx, pw.GetDB(s.backend.ctx),
 		bytes.NewReader(data), s.backend.listID,
 	)
 	if err != nil {

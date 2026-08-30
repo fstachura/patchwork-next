@@ -7,6 +7,7 @@ package admin
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"slices"
@@ -32,13 +33,15 @@ type WebhookListCmd struct {
 	Project string `arg:"" default:"" help:"Project linkname (omit to list all)."`
 }
 
-func (c *WebhookListCmd) Run(ctx *pw.Context) error {
-	q := ctx.DB.NewSelect().Model((*db.Webhook)(nil)).
+func (c *WebhookListCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
+	q := database.NewSelect().Model((*db.Webhook)(nil)).
 		OrderExpr("id ASC")
 
 	if c.Project != "" {
 		var project db.Project
-		err := ctx.DB.NewSelect().Model(&project).
+		err := database.NewSelect().Model(&project).
 			Where("linkname = ?", c.Project).
 			Scan(ctx)
 		if err != nil {
@@ -64,7 +67,7 @@ func (c *WebhookListCmd) Run(ctx *pw.Context) error {
 		for id := range projIDs {
 			ids = append(ids, id)
 		}
-		ctx.DB.NewSelect().Model(&projects).
+		database.NewSelect().Model(&projects).
 			Where("id IN ?", bun.Tuple(ids)).
 			Scan(ctx)
 		for _, p := range projects {
@@ -118,13 +121,15 @@ type WebhookCreateCmd struct {
 	Active  bool       `name:"active" default:"true" negatable:"" help:"Whether the webhook is active."`
 }
 
-func (c *WebhookCreateCmd) Run(ctx *pw.Context) error {
+func (c *WebhookCreateCmd) Run(ctx context.Context) error {
 	if err := db.ValidateEvents(string(c.Events)); err != nil {
 		return err
 	}
 
+	database := pw.GetDB(ctx)
+
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Project).
 		Scan(ctx)
 	if err != nil {
@@ -132,7 +137,7 @@ func (c *WebhookCreateCmd) Run(ctx *pw.Context) error {
 	}
 
 	var user db.User
-	err = ctx.DB.NewSelect().Model(&user).
+	err = database.NewSelect().Model(&user).
 		Where("username = ?", c.User).
 		Scan(ctx)
 	if err != nil {
@@ -148,7 +153,7 @@ func (c *WebhookCreateCmd) Run(ctx *pw.Context) error {
 		CreatorID: user.ID,
 		Created:   time.Now(),
 	}
-	err = db.New(ctx, ctx.DB).Insert(&hook)
+	err = db.New(ctx, database).Insert(&hook)
 	if err != nil {
 		return err
 	}
@@ -165,16 +170,18 @@ type WebhookUpdateCmd struct {
 	Active *bool  `name:"active" negatable:"" help:"Whether the webhook is active."`
 }
 
-func (c *WebhookUpdateCmd) Run(ctx *pw.Context) error {
+func (c *WebhookUpdateCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var hook db.Webhook
-	err := ctx.DB.NewSelect().Model(&hook).
+	err := database.NewSelect().Model(&hook).
 		Where("id = ?", c.ID).
 		Scan(ctx)
 	if err != nil {
 		return fmt.Errorf("webhook %d not found", c.ID)
 	}
 
-	q := ctx.DB.NewUpdate().Model(&hook).Where("id = ?", hook.ID)
+	q := database.NewUpdate().Model(&hook).Where("id = ?", hook.ID)
 	updated := false
 	if c.URL != "" {
 		q = q.Set("url = ?", c.URL)
@@ -214,9 +221,11 @@ type WebhookDeleteCmd struct {
 	ID    int  `arg:"" help:"Webhook ID to delete."`
 }
 
-func (c *WebhookDeleteCmd) Run(ctx *pw.Context) error {
+func (c *WebhookDeleteCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var hook db.Webhook
-	err := ctx.DB.NewSelect().Model(&hook).
+	err := database.NewSelect().Model(&hook).
 		Where("id = ?", c.ID).
 		Scan(ctx)
 	if err != nil {
@@ -235,7 +244,7 @@ func (c *WebhookDeleteCmd) Run(ctx *pw.Context) error {
 		}
 	}
 
-	_, err = ctx.DB.NewDelete().Model((*db.Webhook)(nil)).
+	_, err = database.NewDelete().Model((*db.Webhook)(nil)).
 		Where("id = ?", hook.ID).
 		Exec(ctx)
 	if err != nil {

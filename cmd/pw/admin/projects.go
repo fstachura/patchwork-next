@@ -7,6 +7,7 @@ package admin
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -26,9 +27,11 @@ type ProjectCmd struct {
 
 type ProjectListCmd struct{}
 
-func (c *ProjectListCmd) Run(ctx *pw.Context) error {
+func (c *ProjectListCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var projects []db.Project
-	err := ctx.DB.NewSelect().Model(&projects).
+	err := database.NewSelect().Model(&projects).
 		OrderExpr("id ASC").
 		Scan(ctx)
 	if err != nil {
@@ -48,9 +51,11 @@ type ProjectShowCmd struct {
 	Linkname string `arg:"" help:"Project linkname."`
 }
 
-func (c *ProjectShowCmd) Run(ctx *pw.Context) error {
+func (c *ProjectShowCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Linkname).
 		Scan(ctx)
 	if err != nil {
@@ -85,7 +90,9 @@ type ProjectCreateCmd struct {
 	CommitURL      string `name:"commit-url-format" help:"Commit URL format string."`
 }
 
-func (c *ProjectCreateCmd) Run(ctx *pw.Context) error {
+func (c *ProjectCreateCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	project := db.Project{
 		Name:                 c.Name,
 		Linkname:             c.Linkname,
@@ -99,7 +106,7 @@ func (c *ProjectCreateCmd) Run(ctx *pw.Context) error {
 		CommitURLFormat:      c.CommitURL,
 		ListArchiveURLFormat: "",
 	}
-	err := db.New(ctx, ctx.DB).Insert(&project)
+	err := db.New(ctx, database).Insert(&project)
 	if err != nil {
 		return err
 	}
@@ -121,16 +128,18 @@ type ProjectUpdateCmd struct {
 	CommitURL      string `name:"commit-url-format" help:"Commit URL format string."`
 }
 
-func (c *ProjectUpdateCmd) Run(ctx *pw.Context) error {
+func (c *ProjectUpdateCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Linkname).
 		Scan(ctx)
 	if err != nil {
 		return fmt.Errorf("project %q not found", c.Linkname)
 	}
 
-	q := ctx.DB.NewUpdate().Model(&project).Where("id = ?", project.ID)
+	q := database.NewUpdate().Model(&project).Where("id = ?", project.ID)
 	updated := false
 	if c.Name != "" {
 		q = q.Set("name = ?", c.Name)
@@ -187,9 +196,11 @@ type ProjectDeleteCmd struct {
 	Linkname string `arg:"" help:"Project linkname."`
 }
 
-func (c *ProjectDeleteCmd) Run(ctx *pw.Context) error {
+func (c *ProjectDeleteCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Linkname).
 		Scan(ctx)
 	if err != nil {
@@ -207,7 +218,7 @@ func (c *ProjectDeleteCmd) Run(ctx *pw.Context) error {
 		}
 	}
 
-	_, err = ctx.DB.NewDelete().Model((*db.Project)(nil)).
+	_, err = database.NewDelete().Model((*db.Project)(nil)).
 		Where("id = ?", project.ID).
 		Exec(ctx)
 	if err != nil {

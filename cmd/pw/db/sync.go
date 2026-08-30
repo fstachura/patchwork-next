@@ -6,6 +6,8 @@
 package db
 
 import (
+	"context"
+
 	"github.com/getpatchwork/patchwork/cmd/pw/pw"
 	"github.com/getpatchwork/patchwork/pkg/db/migrations"
 	"github.com/getpatchwork/patchwork/pkg/log"
@@ -13,8 +15,8 @@ import (
 
 type SyncCmd struct{}
 
-func (c *SyncCmd) Run(ctx *pw.Context) error {
-	if err := migrations.RunMigrations(ctx, ctx.DB); err != nil {
+func (c *SyncCmd) Run(ctx context.Context) error {
+	if err := migrations.RunMigrations(ctx, pw.GetDB(ctx)); err != nil {
 		return err
 	}
 	log.Noticef("database schema is up to date")

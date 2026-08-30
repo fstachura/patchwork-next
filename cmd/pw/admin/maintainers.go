@@ -6,6 +6,7 @@
 package admin
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -24,9 +25,11 @@ type MaintainerListCmd struct {
 	Project string `arg:"" help:"Project linkname."`
 }
 
-func (c *MaintainerListCmd) Run(ctx *pw.Context) error {
+func (c *MaintainerListCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Project).
 		Scan(ctx)
 	if err != nil {
@@ -34,7 +37,7 @@ func (c *MaintainerListCmd) Run(ctx *pw.Context) error {
 	}
 
 	var maintainers []db.ProjectMaintainer
-	err = ctx.DB.NewSelect().Model(&maintainers).
+	err = database.NewSelect().Model(&maintainers).
 		Relation("User").
 		Where("project_id = ?", project.ID).
 		Scan(ctx)
@@ -59,9 +62,11 @@ type MaintainerAddCmd struct {
 	Username string `arg:"" help:"Username to add as maintainer."`
 }
 
-func (c *MaintainerAddCmd) Run(ctx *pw.Context) error {
+func (c *MaintainerAddCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Project).
 		Scan(ctx)
 	if err != nil {
@@ -69,7 +74,7 @@ func (c *MaintainerAddCmd) Run(ctx *pw.Context) error {
 	}
 
 	var user db.User
-	err = ctx.DB.NewSelect().Model(&user).
+	err = database.NewSelect().Model(&user).
 		Where("username = ?", c.Username).
 		Scan(ctx)
 	if err != nil {
@@ -80,7 +85,7 @@ func (c *MaintainerAddCmd) Run(ctx *pw.Context) error {
 		UserID:    user.ID,
 		ProjectID: project.ID,
 	}
-	err = db.New(ctx, ctx.DB).Insert(&m)
+	err = db.New(ctx, database).Insert(&m)
 	if err != nil {
 		return err
 	}
@@ -94,9 +99,11 @@ type MaintainerRemoveCmd struct {
 	Username string `arg:"" help:"Username to remove."`
 }
 
-func (c *MaintainerRemoveCmd) Run(ctx *pw.Context) error {
+func (c *MaintainerRemoveCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var project db.Project
-	err := ctx.DB.NewSelect().Model(&project).
+	err := database.NewSelect().Model(&project).
 		Where("linkname = ?", c.Project).
 		Scan(ctx)
 	if err != nil {
@@ -104,14 +111,14 @@ func (c *MaintainerRemoveCmd) Run(ctx *pw.Context) error {
 	}
 
 	var user db.User
-	err = ctx.DB.NewSelect().Model(&user).
+	err = database.NewSelect().Model(&user).
 		Where("username = ?", c.Username).
 		Scan(ctx)
 	if err != nil {
 		return fmt.Errorf("user %q not found", c.Username)
 	}
 
-	res, err := ctx.DB.NewDelete().
+	res, err := database.NewDelete().
 		Model((*db.ProjectMaintainer)(nil)).
 		Where("user_id = ?", user.ID).
 		Where("project_id = ?", project.ID).

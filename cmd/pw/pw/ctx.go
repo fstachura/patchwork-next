@@ -13,22 +13,32 @@ import (
 	"github.com/getpatchwork/patchwork/pkg/config"
 )
 
-type Context struct {
-	context.Context
+type (
+	configKey  struct{}
+	dbKey      struct{}
+	versionKey struct{}
+)
 
-	Config  *config.Config
-	DB      *bun.DB
-	Version string
+func WithConfig(ctx context.Context, cfg *config.Config) context.Context {
+	return context.WithValue(ctx, configKey{}, cfg)
 }
 
-func (c *Context) Value(key any) any {
-	if key, ok := key.(string); ok {
-		switch key {
-		case "cfg", "config":
-			return c.Config
-		case "db", "database":
-			return c.DB
-		}
-	}
-	return nil
+func WithDB(ctx context.Context, db *bun.DB) context.Context {
+	return context.WithValue(ctx, dbKey{}, db)
+}
+
+func WithVersion(ctx context.Context, version string) context.Context {
+	return context.WithValue(ctx, versionKey{}, version)
+}
+
+func GetConfig(ctx context.Context) *config.Config {
+	return ctx.Value(configKey{}).(*config.Config)
+}
+
+func GetDB(ctx context.Context) *bun.DB {
+	return ctx.Value(dbKey{}).(*bun.DB)
+}
+
+func GetVersion(ctx context.Context) string {
+	return ctx.Value(versionKey{}).(string)
 }

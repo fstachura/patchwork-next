@@ -7,6 +7,7 @@ package admin
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -28,9 +29,11 @@ type UserCmd struct {
 
 type UserListCmd struct{}
 
-func (c *UserListCmd) Run(ctx *pw.Context) error {
+func (c *UserListCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var users []db.User
-	err := ctx.DB.NewSelect().Model(&users).
+	err := database.NewSelect().Model(&users).
 		OrderExpr("username ASC").
 		Scan(ctx)
 	if err != nil {
@@ -53,7 +56,7 @@ type UserCreateCmd struct {
 	Admin    bool   `help:"Grant admin privileges."`
 }
 
-func (c *UserCreateCmd) Run(ctx *pw.Context) error {
+func (c *UserCreateCmd) Run(ctx context.Context) error {
 	if c.Username == "" {
 		var err error
 		c.Username, err = readLine("Username: ")
@@ -87,6 +90,8 @@ func (c *UserCreateCmd) Run(ctx *pw.Context) error {
 		return fmt.Errorf("passwords do not match")
 	}
 
+	database := pw.GetDB(ctx)
+
 	user := db.User{
 		Username:   c.Username,
 		Email:      c.Email,
@@ -95,7 +100,7 @@ func (c *UserCreateCmd) Run(ctx *pw.Context) error {
 		IsActive:   true,
 		DateJoined: time.Now(),
 	}
-	err = db.New(ctx, ctx.DB).Insert(&user)
+	err = db.New(ctx, database).Insert(&user)
 	if err != nil {
 		return err
 	}
@@ -109,9 +114,11 @@ type UserDeleteCmd struct {
 	Username string `arg:"" help:"Username to delete."`
 }
 
-func (c *UserDeleteCmd) Run(ctx *pw.Context) error {
+func (c *UserDeleteCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var user db.User
-	err := ctx.DB.NewSelect().Model(&user).
+	err := database.NewSelect().Model(&user).
 		Where("username = ?", c.Username).
 		Scan(ctx)
 	if err != nil {
@@ -129,7 +136,7 @@ func (c *UserDeleteCmd) Run(ctx *pw.Context) error {
 		}
 	}
 
-	_, err = ctx.DB.NewDelete().Model((*db.User)(nil)).
+	_, err = database.NewDelete().Model((*db.User)(nil)).
 		Where("id = ?", user.ID).
 		Exec(ctx)
 	if err != nil {
@@ -144,9 +151,11 @@ type UserPasswdCmd struct {
 	Username string `arg:"" help:"Username to change password for."`
 }
 
-func (c *UserPasswdCmd) Run(ctx *pw.Context) error {
+func (c *UserPasswdCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var user db.User
-	err := ctx.DB.NewSelect().Model(&user).
+	err := database.NewSelect().Model(&user).
 		Where("username = ?", c.Username).
 		Scan(ctx)
 	if err != nil {
@@ -168,7 +177,7 @@ func (c *UserPasswdCmd) Run(ctx *pw.Context) error {
 		return fmt.Errorf("password cannot be empty")
 	}
 
-	_, err = ctx.DB.NewUpdate().Model(&user).
+	_, err = database.NewUpdate().Model(&user).
 		Where("id = ?", user.ID).
 		Set("password = ?", db.HashPassword(password)).
 		Exec(ctx)

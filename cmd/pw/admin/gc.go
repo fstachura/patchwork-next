@@ -6,6 +6,7 @@
 package admin
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -15,8 +16,9 @@ import (
 
 type GcCmd struct{}
 
-func (c *GcCmd) Run(ctx *pw.Context) error {
-	q := db.New(ctx, ctx.DB)
+func (c *GcCmd) Run(ctx context.Context) error {
+	cfg := pw.GetConfig(ctx)
+	q := db.New(ctx, pw.GetDB(ctx))
 
 	n, err := q.CleanExpiredSessions()
 	if err != nil {
@@ -42,8 +44,8 @@ func (c *GcCmd) Run(ctx *pw.Context) error {
 		fmt.Printf("deleted %d inactive user(s)\n", n)
 	}
 
-	if ctx.Config.Database.EventMaxAge > 0 {
-		cutoff := time.Now().Add(-ctx.Config.Database.EventMaxAge.Duration())
+	if cfg.Database.EventMaxAge > 0 {
+		cutoff := time.Now().Add(-cfg.Database.EventMaxAge.Duration())
 		n, err = q.CleanOldEvents(cutoff)
 		if err != nil {
 			return fmt.Errorf("events: %w", err)

@@ -58,28 +58,22 @@ func main() {
 
 	k := config.Parse(&cli, "Patchwork runtime commands.")
 
-	if strings.HasPrefix(k.Command(), "config") {
-		k.FatalIfErrorf(k.Run(&pw.Context{
-			Context: context.Background(),
-			Config:  &cli.Config,
-			Version: Version,
-		}))
-		return
-	}
-
 	if cli.Syslog {
 		log.InitSyslog("pw-" + k.Command())
 		k.Stderr = log.ErrLogger().Writer()
 	}
 
-	database, err := db.Open(&cli.Config)
-	k.FatalIfErrorf(err, "database")
-	defer database.Close()
+	ctx := context.Background()
+	ctx = pw.WithConfig(ctx, &cli.Config)
+	ctx = pw.WithVersion(ctx, Version)
 
-	k.FatalIfErrorf(k.Run(&pw.Context{
-		Context: context.Background(),
-		Config:  &cli.Config,
-		DB:      database,
-		Version: Version,
-	}))
+	if !strings.HasPrefix(k.Command(), "config") {
+		database, err := db.Open(&cli.Config)
+		k.FatalIfErrorf(err, "database")
+		defer database.Close()
+		ctx = pw.WithDB(ctx, database)
+	}
+
+	k.BindTo(ctx, (*context.Context)(nil))
+	k.FatalIfErrorf(k.Run())
 }

@@ -26,25 +26,29 @@ import (
 
 type CLI struct{}
 
-func (c *CLI) Run(ctx *pw.Context) error {
-	if ctx.Config.Database.AutoSync {
-		if err := migrations.RunMigrations(ctx, ctx.DB); err != nil {
+func (c *CLI) Run(ctx context.Context) error {
+	cfg := pw.GetConfig(ctx)
+	database := pw.GetDB(ctx)
+	version := pw.GetVersion(ctx)
+
+	if cfg.Database.AutoSync {
+		if err := migrations.RunMigrations(ctx, database); err != nil {
 			return err
 		}
-	} else if err := migrations.CheckSchemaVersion(ctx, ctx.DB); err != nil {
+	} else if err := migrations.CheckSchemaVersion(ctx, database); err != nil {
 		return err
 	}
 
-	bus := events.Start(ctx, ctx.DB)
+	bus := events.Start(ctx, database)
 	defer bus.Shutdown()
 
-	mbox.Version = ctx.Version
+	mbox.Version = version
 
-	router := web.NewRouter(ctx.Config, ctx.DB, bus, ctx.Version)
-	router.Mount("/", api.NewRouter(ctx.Config, ctx.DB, ctx.Config.Http.BaseURL, bus))
+	router := web.NewRouter(cfg, database, bus, version)
+	router.Mount("/", api.NewRouter(cfg, database, cfg.Http.BaseURL, bus))
 
 	srv := &http.Server{
-		Addr:     ctx.Config.Http.Listen,
+		Addr:     cfg.Http.Listen,
 		Handler:  router,
 		ErrorLog: log.ErrLogger(),
 	}
@@ -57,7 +61,7 @@ func (c *CLI) Run(ctx *pw.Context) error {
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		log.Noticef("patchwork %s listening on http://%s", ctx.Version, sock.Addr())
+		log.Noticef("patchwork %s listening on http://%s", version, sock.Addr())
 		if e := srv.Serve(sock); e != nil && e != http.ErrServerClosed {
 			err = fmt.Errorf("serve: %w", e)
 			done <- syscall.SIGCHLD

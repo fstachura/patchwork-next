@@ -7,6 +7,7 @@ package admin
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -24,9 +25,11 @@ type StateCmd struct {
 
 type StateListCmd struct{}
 
-func (c *StateListCmd) Run(ctx *pw.Context) error {
+func (c *StateListCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var states []db.State
-	err := ctx.DB.NewSelect().Model(&states).
+	err := database.NewSelect().Model(&states).
 		OrderExpr("ordering ASC").
 		Scan(ctx)
 	if err != nil {
@@ -49,14 +52,16 @@ type StateCreateCmd struct {
 	ActionRequired bool   `name:"action-required" help:"Whether this state requires action."`
 }
 
-func (c *StateCreateCmd) Run(ctx *pw.Context) error {
+func (c *StateCreateCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	state := db.State{
 		Name:           c.Name,
 		Slug:           c.Slug,
 		Ordering:       c.Ordering,
 		ActionRequired: c.ActionRequired,
 	}
-	err := db.New(ctx, ctx.DB).Insert(&state)
+	err := db.New(ctx, database).Insert(&state)
 	if err != nil {
 		return err
 	}
@@ -70,9 +75,11 @@ type StateDeleteCmd struct {
 	Slug  string `arg:"" help:"State slug to delete."`
 }
 
-func (c *StateDeleteCmd) Run(ctx *pw.Context) error {
+func (c *StateDeleteCmd) Run(ctx context.Context) error {
+	database := pw.GetDB(ctx)
+
 	var state db.State
-	err := ctx.DB.NewSelect().Model(&state).
+	err := database.NewSelect().Model(&state).
 		Where("slug = ?", c.Slug).
 		Scan(ctx)
 	if err != nil {
@@ -90,7 +97,7 @@ func (c *StateDeleteCmd) Run(ctx *pw.Context) error {
 		}
 	}
 
-	_, err = ctx.DB.NewDelete().Model((*db.State)(nil)).
+	_, err = database.NewDelete().Model((*db.State)(nil)).
 		Where("id = ?", state.ID).
 		Exec(ctx)
 	if err != nil {
