@@ -12,6 +12,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
+	"reflect"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql" // register mysql driver
 	_ "github.com/jackc/pgx/v5/stdlib" // register pgx driver
@@ -189,7 +191,33 @@ func (q *Queries) Rollback() error {
 }
 
 func (q *Queries) Insert(model any) error {
-	return q.DB.NewInsert().Model(model).
-		Returning("*").
-		Scan(q.Ctx)
+	query := q.DB.NewInsert().Model(model)
+
+	typ := reflect.TypeOf(model)
+	if typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
+	if typ.Kind() == reflect.Struct {
+		for i := range typ.NumField() {
+			tag := typ.Field(i).Tag.Get("bun")
+			if strings.Contains(tag, "autoincrement") {
+				col, _, _ := strings.Cut(tag, ",")
+				query = query.ExcludeColumn(col)
+			}
+		}
+	}
+
+	return query.Returning("*").Scan(q.Ctx)
+}
+
+func (q *Queries) Select(model any) *bun.SelectQuery {
+	return q.DB.NewSelect().Model(model)
+}
+
+func (q *Queries) Update(model any) *bun.UpdateQuery {
+	return q.DB.NewUpdate().Model(model)
+}
+
+func (q *Queries) Delete(model any) *bun.DeleteQuery {
+	return q.DB.NewDelete().Model(model)
 }
