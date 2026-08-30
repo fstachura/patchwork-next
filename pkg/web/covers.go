@@ -28,7 +28,7 @@ func (h *webHandler) CoverDetailPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var cover db.Cover
-	err = q.DB.NewSelect().Model(&cover).
+	err = q.Select(&cover).
 		Relation("Submitter").
 		Where("project_id = ?", project.ID).
 		Where("msgid = ?", msgid).
@@ -41,7 +41,7 @@ func (h *webHandler) CoverDetailPage(w http.ResponseWriter, r *http.Request) {
 	var series *db.Series
 	if cover.ID > 0 {
 		var s db.Series
-		if q.DB.NewSelect().Model(&s).Where("cover_letter_id = ?", cover.ID).Scan(q.Ctx) == nil {
+		if q.Select(&s).Where("cover_letter_id = ?", cover.ID).Scan(q.Ctx) == nil {
 			series = &s
 		}
 	}
@@ -100,7 +100,7 @@ func (h *webHandler) CoverRedirect(w http.ResponseWriter, r *http.Request) {
 		Msgid     string
 		ProjectID int
 	}
-	err = q.DB.NewSelect().Model((*db.Cover)(nil)).
+	err = q.Select((*db.Cover)(nil)).
 		Column("msgid", "project_id").
 		Where("id = ?", id).
 		Scan(q.Ctx, &cover)

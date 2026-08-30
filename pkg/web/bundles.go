@@ -31,7 +31,7 @@ func (h *webHandler) BundleList(w http.ResponseWriter, r *http.Request) {
 	pc := h.pageCtx(r)
 
 	var bundles []db.Bundle
-	q.DB.NewSelect().Model(&bundles).
+	q.Select(&bundles).
 		ColumnExpr("bundle.*, (SELECT count(*) FROM bundle_patch WHERE bundle_id = bundle.id) AS patch_count").
 		Relation("Owner").Relation("Project").
 		Where("owner_id = ?", user.ID).
@@ -53,7 +53,7 @@ func (h *webHandler) ProjectBundleList(w http.ResponseWriter, r *http.Request) {
 	}
 	pc := h.projectPageCtx(r, project)
 
-	sq := q.DB.NewSelect().Model((*db.Bundle)(nil)).
+	sq := q.Select((*db.Bundle)(nil)).
 		ColumnExpr("bundle.*, (SELECT count(*) FROM bundle_patch WHERE bundle_id = bundle.id) AS patch_count").
 		Relation("Owner").Relation("Project").
 		Where("project_id = ?", project.ID).
@@ -91,8 +91,7 @@ func (h *webHandler) BundleDetail(w http.ResponseWriter, r *http.Request) {
 	user := getWebUser(r)
 
 	var bundle db.Bundle
-	err := q.DB.NewSelect().
-		Model(&bundle).
+	err := q.Select(&bundle).
 		Join("JOIN auth_user AS u ON u.id = bundle.owner_id").
 		Where("u.username = ?", username).
 		Where("bundle.name = ?", bundlename).
@@ -109,8 +108,7 @@ func (h *webHandler) BundleDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var patches []db.Patch
-	err = q.DB.NewSelect().
-		Model(&patches).
+	err = q.Select(&patches).
 		Relation("Submitter").Relation("State").Relation("Delegate").
 		Join("JOIN bundle_patch AS bp ON bp.patch_id = patch.id").
 		Where("bp.bundle_id = ?", bundle.ID).
@@ -126,9 +124,9 @@ func (h *webHandler) BundleDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var owner db.User
-	if q.DB.NewSelect().Model(&owner).Where("id = ?", bundle.OwnerID).Scan(q.Ctx) == nil {
-		bundle.Owner = &owner
+	owner, err := q.GetUserByID(bundle.OwnerID)
+	if err == nil {
+		bundle.Owner = owner
 	}
 	project, err := q.GetProjectByID(bundle.ProjectID)
 	if err == nil {
@@ -160,8 +158,7 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var bundle db.Bundle
-	err := q.DB.NewSelect().
-		Model(&bundle).
+	err := q.Select(&bundle).
 		Join("JOIN auth_user AS u ON u.id = bundle.owner_id").
 		Where("u.username = ?", username).
 		Where("bundle.name = ?", bundlename).
@@ -176,12 +173,12 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	switch action {
 	case "delete":
-		if _, err := q.DB.NewDelete().Model((*db.BundlePatch)(nil)).
+		if _, err := q.Delete((*db.BundlePatch)(nil)).
 			Where("bundle_id = ?", bundle.ID).Exec(q.Ctx); err != nil {
 			serverErrorPage(w, "delete bundle patches", err)
 			return
 		}
-		if _, err := q.DB.NewDelete().Model((*db.Bundle)(nil)).
+		if _, err := q.Delete((*db.Bundle)(nil)).
 			Where("id = ?", bundle.ID).Exec(q.Ctx); err != nil {
 			serverErrorPage(w, "delete bundle", err)
 			return
@@ -192,7 +189,7 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 		newName := strings.TrimSpace(r.FormValue("name"))
 		public := r.FormValue("public") == "on"
 		if newName != "" {
-			if _, err := q.DB.NewUpdate().Model(&bundle).
+			if _, err := q.Update(&bundle).
 				Where("id = ?", bundle.ID).
 				Set("name = ?", newName).
 				Set("public = ?", public).
@@ -211,7 +208,7 @@ func (h *webHandler) BundleUpdate(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			if _, err := q.DB.NewDelete().Model((*db.BundlePatch)(nil)).
+			if _, err := q.Delete((*db.BundlePatch)(nil)).
 				Where("bundle_id = ?", bundle.ID).
 				Where("patch_id = ?", patchID).
 				Exec(q.Ctx); err != nil {

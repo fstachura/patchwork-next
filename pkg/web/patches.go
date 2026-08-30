@@ -45,7 +45,7 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 		perPage = h.cfg.Http.WebPageMax
 	}
 
-	sq := q.DB.NewSelect().Model((*db.Patch)(nil)).
+	sq := q.Select((*db.Patch)(nil)).
 		Column("id", "msgid", "date", "submitter_id", "project_id",
 			"name", "state_id", "delegate_id", "archived", "series_id").
 		Where("project_id = ?", project.ID)
@@ -85,7 +85,7 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var tagAbbrevs []string
-	err = q.DB.NewSelect().Model((*db.Tag)(nil)).Column("abbrev").
+	err = q.Select((*db.Tag)(nil)).Column("abbrev").
 		Where("show_column = ?", true).OrderExpr("id ASC").
 		Scan(q.Ctx, &tagAbbrevs)
 	if err != nil {
@@ -106,7 +106,7 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 			Name *string `bun:"name"`
 		}
 		var rows []nameRow
-		q.DB.NewSelect().Model((*db.Series)(nil)).
+		q.Select((*db.Series)(nil)).
 			Column("id", "name").
 			Where("id IN ?", bun.Tuple(seriesIDs)).
 			Scan(q.Ctx, &rows)
@@ -203,7 +203,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 
 	switch action {
 	case "update":
-		uq := q.DB.NewUpdate().Model((*db.Patch)(nil)).
+		uq := q.Update((*db.Patch)(nil)).
 			Where("id IN ?", bun.Tuple(patchIDs)).
 			Where("project_id = ?", project.ID)
 		changed := false
@@ -238,7 +238,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		var bundle db.Bundle
-		err := q.DB.NewSelect().Model(&bundle).
+		err := q.Select(&bundle).
 			Where("id = ?", bundleID).
 			Where("owner_id = ?", user.ID).
 			Scan(q.Ctx)
@@ -246,7 +246,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		var maxOrder int
-		q.DB.NewSelect().Model((*db.BundlePatch)(nil)).
+		q.Select((*db.BundlePatch)(nil)).
 			ColumnExpr("COALESCE(MAX(?), -1)", bun.Ident("order")).
 			Where("bundle_id = ?", bundle.ID).
 			Scan(q.Ctx, &maxOrder)
@@ -260,9 +260,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 				PatchID:  int(patchID),
 				Order:    maxOrder + int(i) + 1,
 			}
-			if _, err := q.DB.NewInsert().Model(&bp).
-				On("CONFLICT DO NOTHING").
-				ExcludeColumn("id").Exec(q.Ctx); err != nil {
+			if err := q.Insert(&bp); err != nil {
 				serverErrorPage(w, "add patch to bundle", err)
 				return
 			}
@@ -291,7 +289,7 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 				PatchID:  int(patchID),
 				Order:    int(i),
 			}
-			if _, err := q.DB.NewInsert().Model(&bp).ExcludeColumn("id").Exec(q.Ctx); err != nil {
+			if err := q.Insert(&bp); err != nil {
 				serverErrorPage(w, "add patch to bundle", err)
 				return
 			}
@@ -315,7 +313,7 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var patch db.Patch
-	err = q.DB.NewSelect().Model(&patch).
+	err = q.Select(&patch).
 		Relation("Submitter").Relation("State").Relation("Delegate").
 		Where("project_id = ?", project.ID).
 		Where("msgid = ?", msgid).
@@ -335,7 +333,7 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 	var series *db.Series
 	if patch.SeriesID != nil {
 		var s db.Series
-		if q.DB.NewSelect().Model(&s).Where("id = ?", *patch.SeriesID).Scan(q.Ctx) == nil {
+		if q.Select(&s).Where("id = ?", *patch.SeriesID).Scan(q.Ctx) == nil {
 			series = &s
 		}
 	}
@@ -347,7 +345,7 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var checks []db.Check
-	err = q.DB.NewSelect().Model(&checks).
+	err = q.Select(&checks).
 		Where("patch_id = ?", patch.ID).
 		OrderExpr("date DESC").
 		Scan(q.Ctx)
@@ -382,7 +380,7 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 		}
 		if series.CoverLetterID != nil {
 			var c db.Cover
-			if q.DB.NewSelect().Model(&c).
+			if q.Select(&c).
 				Column("id", "msgid", "name").
 				Where("id = ?", *series.CoverLetterID).
 				Scan(q.Ctx) == nil {
@@ -411,7 +409,7 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 	var related []db.PatchRef
 	if patch.RelatedID != nil {
 		var relPatches []db.Patch
-		err = q.DB.NewSelect().Model(&relPatches).
+		err = q.Select(&relPatches).
 			Column("id", "name").
 			Where("related_id = ?", *patch.RelatedID).
 			Where("id != ?", patch.ID).
@@ -438,7 +436,7 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 	if series != nil {
 		if series.PreviousSeriesID != nil {
 			var ps db.Series
-			if q.DB.NewSelect().Model(&ps).
+			if q.Select(&ps).
 				Where("id = ?", *series.PreviousSeriesID).
 				Scan(q.Ctx) == nil {
 				prevSeries = &ps
@@ -490,7 +488,7 @@ func (h *webHandler) PatchUpdate(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	var patch db.Patch
-	err := q.DB.NewSelect().Model(&patch).
+	err := q.Select(&patch).
 		Where("project_id IN (SELECT id FROM project WHERE linkname = ?)", linkname).
 		Where("msgid = ?", msgid).
 		Scan(q.Ctx)
@@ -501,7 +499,7 @@ func (h *webHandler) PatchUpdate(w http.ResponseWriter, r *http.Request) {
 
 	oldStateID := patch.StateID
 
-	uq := q.DB.NewUpdate().Model(&patch).Where("id = ?", patch.ID)
+	uq := q.Update(&patch).Where("id = ?", patch.ID)
 	newStateID := int(0)
 	if stateID, _ := strconv.ParseInt(r.FormValue("state"), 10, 64); stateID > 0 {
 		newStateID = int(stateID)
@@ -520,14 +518,14 @@ func (h *webHandler) PatchUpdate(w http.ResponseWriter, r *http.Request) {
 
 	if newStateID > 0 && (oldStateID == nil || *oldStateID != newStateID) {
 		var p db.Patch
-		if err := q.DB.NewSelect().Model(&p).
+		if err := q.Select(&p).
 			Relation("Submitter").Relation("Project").Relation("State").
 			Where("patch.id = ?", patch.ID).
 			Scan(q.Ctx); err == nil {
 			var oldState string
 			if oldStateID != nil {
 				var s db.State
-				if err := q.DB.NewSelect().Model(&s).
+				if err := q.Select(&s).
 					Where("id = ?", *oldStateID).
 					Scan(q.Ctx); err == nil {
 					oldState = s.Name
@@ -564,7 +562,7 @@ func (h *webHandler) CommentAddressed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	addressed := r.FormValue("addressed") == "true"
-	_, _ = q.DB.NewUpdate().Model((*db.PatchComment)(nil)).
+	_, _ = q.Update((*db.PatchComment)(nil)).
 		Set("addressed = ?", addressed).
 		Where("id = ?", commentID).
 		Exec(q.Ctx)
@@ -580,8 +578,7 @@ func (h *webHandler) PatchRawPage(w http.ResponseWriter, r *http.Request) {
 	msgid := "<" + rawMsgid + ">"
 
 	var patch db.Patch
-	err := q.DB.NewSelect().
-		Model(&patch).
+	err := q.Select(&patch).
 		Column("diff", "name").
 		Join("JOIN project AS pr ON pr.id = patch.project_id").
 		Where("pr.linkname = ?", linkname).
@@ -611,7 +608,7 @@ func (h *webHandler) PatchRedirect(w http.ResponseWriter, r *http.Request) {
 		Msgid     string
 		ProjectID int
 	}
-	err = q.DB.NewSelect().Model((*db.Patch)(nil)).
+	err = q.Select((*db.Patch)(nil)).
 		Column("msgid", "project_id").
 		Where("id = ?", id).
 		Scan(q.Ctx, &patch)
@@ -663,7 +660,7 @@ func (h *webHandler) PatchRawByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var patch db.Patch
-	err = q.DB.NewSelect().Model(&patch).
+	err = q.Select(&patch).
 		Column("diff", "name").
 		Where("id = ?", id).Scan(q.Ctx)
 	if err != nil || patch.Diff == nil {

@@ -46,7 +46,7 @@ func (h *webHandler) ProjectDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nPatches, err := q.DB.NewSelect().Model((*db.Patch)(nil)).
+	nPatches, err := q.Select((*db.Patch)(nil)).
 		Where("project_id = ?", project.ID).
 		Where("archived = ?", false).
 		Count(q.Ctx)
@@ -55,7 +55,7 @@ func (h *webHandler) ProjectDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nArchived, err := q.DB.NewSelect().Model((*db.Patch)(nil)).
+	nArchived, err := q.Select((*db.Patch)(nil)).
 		Where("project_id = ?", project.ID).
 		Where("archived = ?", true).
 		Count(q.Ctx)

@@ -56,7 +56,7 @@ func (h *webHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 
 	if len(errors) == 0 {
 		var count int
-		count, _ = q.DB.NewSelect().Model((*db.User)(nil)).
+		count, _ = q.Select((*db.User)(nil)).
 			Where("LOWER(username) = LOWER(?)", username).
 			Count(q.Ctx)
 		if count > 0 {
@@ -65,7 +65,7 @@ func (h *webHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(errors) == 0 {
 		var count int
-		count, _ = q.DB.NewSelect().Model((*db.User)(nil)).
+		count, _ = q.Select((*db.User)(nil)).
 			Where("LOWER(email) = LOWER(?)", email).
 			Count(q.Ctx)
 		if count > 0 {
@@ -129,7 +129,7 @@ func (h *webHandler) ConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	key := urlParam(r, "key")
 
 	var conf db.EmailConfirmation
-	err := q.DB.NewSelect().Model(&conf).
+	err := q.Select(&conf).
 		Where("key = ?", key).
 		Scan(q.Ctx)
 	if err != nil {
@@ -164,7 +164,7 @@ func (h *webHandler) confirmRegistration(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	_, err := q.DB.NewUpdate().Model((*db.User)(nil)).
+	_, err := q.Update((*db.User)(nil)).
 		Where("id = ?", *conf.UserID).
 		Set("is_active = ?", true).
 		Exec(q.Ctx)
@@ -175,17 +175,17 @@ func (h *webHandler) confirmRegistration(w http.ResponseWriter, r *http.Request,
 	}
 
 	var person db.Person
-	err = q.DB.NewSelect().Model(&person).
+	err = q.Select(&person).
 		Where("LOWER(email) = LOWER(?)", conf.Email).
 		Scan(q.Ctx)
 	if err != nil {
 		person = db.Person{Email: conf.Email}
-		if _, err := q.DB.NewInsert().Model(&person).Exec(q.Ctx); err != nil {
+		if err := q.Insert(&person); err != nil {
 			confirmResultPage(pc, "Confirmation failed.").Render(ctx, w)
 			return
 		}
 	}
-	if _, err := q.DB.NewUpdate().Model(&person).
+	if _, err := q.Update(&person).
 		Where("id = ?", person.ID).
 		Set("user_id = ?", *conf.UserID).
 		Exec(q.Ctx); err != nil {
@@ -193,7 +193,7 @@ func (h *webHandler) confirmRegistration(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	_, _ = q.DB.NewUpdate().Model(conf).
+	_, _ = q.Update(conf).
 		Where("id = ?", conf.ID).
 		Set("active = ?", false).
 		Exec(q.Ctx)
@@ -210,17 +210,17 @@ func (h *webHandler) confirmLink(w http.ResponseWriter, r *http.Request, q *db.Q
 	}
 
 	var person db.Person
-	err := q.DB.NewSelect().Model(&person).
+	err := q.Select(&person).
 		Where("LOWER(email) = LOWER(?)", conf.Email).
 		Scan(q.Ctx)
 	if err != nil {
 		person = db.Person{Email: conf.Email}
-		if _, err := q.DB.NewInsert().Model(&person).Exec(q.Ctx); err != nil {
+		if err := q.Insert(&person); err != nil {
 			confirmResultPage(pc, "Confirmation failed.").Render(ctx, w)
 			return
 		}
 	}
-	if _, err := q.DB.NewUpdate().Model(&person).
+	if _, err := q.Update(&person).
 		Where("id = ?", person.ID).
 		Set("user_id = ?", *conf.UserID).
 		Exec(q.Ctx); err != nil {
@@ -228,7 +228,7 @@ func (h *webHandler) confirmLink(w http.ResponseWriter, r *http.Request, q *db.Q
 		return
 	}
 
-	_, _ = q.DB.NewUpdate().Model(conf).
+	_, _ = q.Update(conf).
 		Where("id = ?", conf.ID).
 		Set("active = ?", false).
 		Exec(q.Ctx)

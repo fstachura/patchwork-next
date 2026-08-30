@@ -46,7 +46,7 @@ func (h *webHandler) ProfilePage(w http.ResponseWriter, r *http.Request) {
 
 	// load linked emails
 	var people []db.Person
-	q.DB.NewSelect().Model(&people).
+	q.Select(&people).
 		Where("user_id = ?", user.ID).
 		OrderExpr("email ASC").
 		Scan(ctx)
@@ -61,7 +61,7 @@ func (h *webHandler) ProfilePage(w http.ResponseWriter, r *http.Request) {
 
 	// load bundles
 	var bundles []db.Bundle
-	q.DB.NewSelect().Model(&bundles).
+	q.Select(&bundles).
 		Where("owner_id = ?", user.ID).
 		OrderExpr("name ASC").
 		Scan(ctx)
@@ -71,14 +71,13 @@ func (h *webHandler) ProfilePage(w http.ResponseWriter, r *http.Request) {
 
 	// load API token
 	var token string
-	q.DB.NewSelect().Model((*db.AuthToken)(nil)).Column("key").
+	q.Select((*db.AuthToken)(nil)).Column("key").
 		Where("user_id = ?", user.ID).
 		Scan(ctx, &token)
 
 	// load maintainer projects
 	var maintainerProjects []db.Project
-	q.DB.NewSelect().
-		Model(&maintainerProjects).
+	q.Select(&maintainerProjects).
 		Join("JOIN project_maintainer AS mp ON mp.project_id = project.id").
 		Where("mp.user_id = ?", user.ID).
 		OrderExpr("project.name ASC").
@@ -86,8 +85,7 @@ func (h *webHandler) ProfilePage(w http.ResponseWriter, r *http.Request) {
 
 	// load contributor projects (projects where user submitted patches)
 	var contributorProjects []db.Project
-	q.DB.NewSelect().
-		Model(&contributorProjects).
+	q.Select(&contributorProjects).
 		Distinct().
 		Join("JOIN patch AS pa ON pa.project_id = project.id").
 		Join("JOIN person AS pe ON pe.id = pa.submitter_id").
@@ -127,7 +125,7 @@ func (h *webHandler) ProfileUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	showIds := r.FormValue("show_ids") == "on"
 
-	_, _ = q.DB.NewUpdate().Model((*db.User)(nil)).
+	_, _ = q.Update((*db.User)(nil)).
 		Where("id = ?", user.ID).
 		Set("items_per_page = ?", itemsPerPage).
 		Set("show_ids = ?", showIds).
@@ -209,7 +207,7 @@ func (h *webHandler) UnlinkEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var person db.Person
-	err = q.DB.NewSelect().Model(&person).
+	err = q.Select(&person).
 		Where("id = ?", personID).
 		Where("user_id = ?", user.ID).
 		Scan(ctx)
@@ -223,7 +221,7 @@ func (h *webHandler) UnlinkEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _ = q.DB.NewUpdate().Model(&person).
+	_, _ = q.Update(&person).
 		Where("id = ?", person.ID).
 		Set("user_id = NULL").
 		Exec(ctx)
@@ -268,7 +266,7 @@ func (h *webHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, _ = q.DB.NewUpdate().Model((*db.User)(nil)).
+	_, _ = q.Update((*db.User)(nil)).
 		Where("id = ?", user.ID).
 		Set("password = ?", db.HashPassword(newPassword)).
 		Exec(ctx)
@@ -289,7 +287,7 @@ func (h *webHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := q.DB.NewDelete().Model((*db.AuthToken)(nil)).
+	if _, err := q.Delete((*db.AuthToken)(nil)).
 		Where("user_id = ?", user.ID).Exec(q.Ctx); err != nil {
 		serverErrorPage(w, "delete old token", err)
 		return
@@ -299,9 +297,9 @@ func (h *webHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
 	rand.Read(key)
 	token := hex.EncodeToString(key)
 
-	if _, err := q.DB.NewInsert().Model(&db.AuthToken{
+	if err := q.Insert(&db.AuthToken{
 		Key: token, Created: time.Now(), UserID: user.ID,
-	}).Exec(q.Ctx); err != nil {
+	}); err != nil {
 		serverErrorPage(w, "create token", err)
 		return
 	}
@@ -328,7 +326,7 @@ func (h *webHandler) PasswordReset(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 
 	var user db.User
-	err := q.DB.NewSelect().Model(&user).
+	err := q.Select(&user).
 		Where("LOWER(email) = LOWER(?)", email).
 		Where("is_active = ?", true).
 		Scan(ctx)
@@ -375,7 +373,7 @@ func (h *webHandler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request
 	key := urlParam(r, "key")
 
 	var conf db.EmailConfirmation
-	err := q.DB.NewSelect().Model(&conf).
+	err := q.Select(&conf).
 		Where("key = ?", key).
 		Where("type = ?", "password_reset").
 		Scan(ctx)
@@ -407,12 +405,12 @@ func (h *webHandler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	_, _ = q.DB.NewUpdate().Model((*db.User)(nil)).
+	_, _ = q.Update((*db.User)(nil)).
 		Where("id = ?", *conf.UserID).
 		Set("password = ?", db.HashPassword(newPassword)).
 		Exec(ctx)
 
-	_, _ = q.DB.NewUpdate().Model(&conf).
+	_, _ = q.Update(&conf).
 		Where("id = ?", conf.ID).
 		Set("active = ?", false).
 		Exec(ctx)

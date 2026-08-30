@@ -26,8 +26,7 @@ func (h *webHandler) PatchMboxPage(w http.ResponseWriter, r *http.Request) {
 	msgid := "<" + rawMsgid + ">"
 
 	var patch db.Patch
-	err := q.DB.NewSelect().
-		Model(&patch).
+	err := q.Select(&patch).
 		Join("JOIN project AS pr ON pr.id = patch.project_id").
 		Where("pr.linkname = ?", linkname).
 		Where("patch.msgid = ?", msgid).
@@ -38,7 +37,7 @@ func (h *webHandler) PatchMboxPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var project db.Project
-	err = q.DB.NewSelect().Model(&project).Where("id = ?", patch.ProjectID).Scan(q.Ctx)
+	err = q.Select(&project).Where("id = ?", patch.ProjectID).Scan(q.Ctx)
 	if err != nil {
 		serverErrorPage(w, "get project", err)
 		return
@@ -72,8 +71,7 @@ func (h *webHandler) CoverMboxPage(w http.ResponseWriter, r *http.Request) {
 	msgid := "<" + rawMsgid + ">"
 
 	var cover db.Cover
-	err := q.DB.NewSelect().
-		Model(&cover).
+	err := q.Select(&cover).
 		Join("JOIN project AS pr ON pr.id = cover.project_id").
 		Where("pr.linkname = ?", linkname).
 		Where("cover.msgid = ?", msgid).
@@ -84,7 +82,7 @@ func (h *webHandler) CoverMboxPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var project db.Project
-	err = q.DB.NewSelect().Model(&project).Where("id = ?", cover.ProjectID).Scan(q.Ctx)
+	err = q.Select(&project).Where("id = ?", cover.ProjectID).Scan(q.Ctx)
 	if err != nil {
 		serverErrorPage(w, "get project", err)
 		return
@@ -114,7 +112,7 @@ func (h *webHandler) SeriesMbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var series db.Series
-	err = q.DB.NewSelect().Model(&series).Where("id = ?", id).Scan(q.Ctx)
+	err = q.Select(&series).Where("id = ?", id).Scan(q.Ctx)
 	if err != nil {
 		notFoundPage(w)
 		return
@@ -122,14 +120,14 @@ func (h *webHandler) SeriesMbox(w http.ResponseWriter, r *http.Request) {
 
 	var project db.Project
 	if series.ProjectID != nil {
-		if err = q.DB.NewSelect().Model(&project).Where("id = ?", *series.ProjectID).Scan(q.Ctx); err != nil {
+		if err = q.Select(&project).Where("id = ?", *series.ProjectID).Scan(q.Ctx); err != nil {
 			serverErrorPage(w, "get project", err)
 			return
 		}
 	}
 
 	var patches []db.Patch
-	err = q.DB.NewSelect().Model(&patches).
+	err = q.Select(&patches).
 		Where("series_id = ?", series.ID).
 		OrderBy("number", bun.OrderAsc).
 		Scan(ctx)
@@ -171,7 +169,7 @@ func (h *webHandler) seriesPatchMbox(w http.ResponseWriter, r *http.Request, pat
 
 	var deps []db.Patch
 	if patch.Number != nil {
-		q.DB.NewSelect().Model(&deps).
+		q.Select(&deps).
 			Where("series_id = ?", *patch.SeriesID).
 			Where("number < ?", *patch.Number).
 			OrderBy("number", bun.OrderAsc).
@@ -196,8 +194,7 @@ func (h *webHandler) BundleMbox(w http.ResponseWriter, r *http.Request) {
 	bundlename := urlParam(r, "bundlename")
 
 	var bundle db.Bundle
-	err := q.DB.NewSelect().
-		Model(&bundle).
+	err := q.Select(&bundle).
 		Join("JOIN auth_user AS u ON u.id = bundle.owner_id").
 		Where("u.username = ?", username).
 		Where("bundle.name = ?", bundlename).
@@ -213,14 +210,13 @@ func (h *webHandler) BundleMbox(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var project db.Project
-	if err = q.DB.NewSelect().Model(&project).Where("id = ?", bundle.ProjectID).Scan(q.Ctx); err != nil {
+	if err = q.Select(&project).Where("id = ?", bundle.ProjectID).Scan(q.Ctx); err != nil {
 		serverErrorPage(w, "get project", err)
 		return
 	}
 
 	var patches []db.Patch
-	err = q.DB.NewSelect().
-		Model(&patches).
+	err = q.Select(&patches).
 		Join("JOIN bundle_patch AS bp ON bp.patch_id = patch.id").
 		Where("bp.bundle_id = ?", bundle.ID).
 		OrderBy("bp.order", bun.OrderAsc).
@@ -253,7 +249,7 @@ func (h *webHandler) CommentRedirect(w http.ResponseWriter, r *http.Request) {
 	var pc struct {
 		PatchID int
 	}
-	err = q.DB.NewSelect().Model((*db.PatchComment)(nil)).Column("patch_id").
+	err = q.Select((*db.PatchComment)(nil)).Column("patch_id").
 		Where("id = ?", id).
 		Scan(ctx, &pc)
 	if err == nil {
@@ -261,11 +257,11 @@ func (h *webHandler) CommentRedirect(w http.ResponseWriter, r *http.Request) {
 			Msgid     string
 			ProjectID int
 		}
-		q.DB.NewSelect().Model((*db.Patch)(nil)).Column("msgid", "project_id").
+		q.Select((*db.Patch)(nil)).Column("msgid", "project_id").
 			Where("id = ?", pc.PatchID).
 			Scan(ctx, &patch)
 		var linkname string
-		q.DB.NewSelect().Model((*db.Project)(nil)).Column("linkname").
+		q.Select((*db.Project)(nil)).Column("linkname").
 			Where("id = ?", patch.ProjectID).
 			Scan(ctx, &linkname)
 		http.Redirect(w, r,
@@ -278,7 +274,7 @@ func (h *webHandler) CommentRedirect(w http.ResponseWriter, r *http.Request) {
 	var cc struct {
 		CoverID int
 	}
-	err = q.DB.NewSelect().Model((*db.CoverComment)(nil)).Column("cover_id").
+	err = q.Select((*db.CoverComment)(nil)).Column("cover_id").
 		Where("id = ?", id).
 		Scan(ctx, &cc)
 	if err == nil {
@@ -286,11 +282,11 @@ func (h *webHandler) CommentRedirect(w http.ResponseWriter, r *http.Request) {
 			Msgid     string
 			ProjectID int
 		}
-		q.DB.NewSelect().Model((*db.Cover)(nil)).Column("msgid", "project_id").
+		q.Select((*db.Cover)(nil)).Column("msgid", "project_id").
 			Where("id = ?", cc.CoverID).
 			Scan(ctx, &cover)
 		var linkname string
-		q.DB.NewSelect().Model((*db.Project)(nil)).Column("linkname").
+		q.Select((*db.Project)(nil)).Column("linkname").
 			Where("id = ?", cover.ProjectID).
 			Scan(ctx, &linkname)
 		http.Redirect(w, r,

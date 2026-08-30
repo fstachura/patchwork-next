@@ -30,7 +30,7 @@ func (h *webHandler) TodoLists(w http.ResponseWriter, r *http.Request) {
 		Count     int `bun:"count"`
 	}
 	var counts []countRow
-	q.DB.NewSelect().Model((*db.Patch)(nil)).
+	q.Select((*db.Patch)(nil)).
 		Column("project_id").
 		ColumnExpr("count(*) AS count").
 		Where("archived = ?", false).
@@ -80,7 +80,7 @@ func (h *webHandler) todoList(w http.ResponseWriter, r *http.Request) {
 	pc := h.projectPageCtx(r, project)
 
 	var patches []db.Patch
-	q.DB.NewSelect().Model(&patches).
+	q.Select(&patches).
 		Relation("Submitter").Relation("State").Relation("Delegate").
 		Where("project_id = ?", project.ID).
 		Where("archived = ?", false).
