@@ -23,6 +23,10 @@ import (
 	"github.com/getpatchwork/patchwork/pkg/log"
 )
 
+func init() {
+	db.ProcessEvent = processEventSync
+}
+
 type webhookItem struct {
 	event *db.Event
 	hooks []db.Webhook
@@ -230,4 +234,40 @@ func buildPayload(q *db.Queries, e *db.Event) (map[string]any, error) {
 	}
 
 	return m, nil
+}
+
+func processEventSync(ctx context.Context, database *bun.DB, e *db.Event) {
+	q := db.New(ctx, database)
+	if err := q.Insert(e); err != nil {
+		log.Errorf("event %s: create: %v", e.Category, err)
+		return
+	}
+	log.Debugf("event created: %s (id=%d)", e.Category, e.ID)
+
+	hooks, err := q.GetActiveWebhooks(e.ProjectID)
+	if err != nil || len(hooks) == 0 {
+		return
+	}
+
+	var project db.Project
+	if err := q.Select(&project).
+		Where("id = ?", e.ProjectID).
+		Scan(ctx); err != nil {
+		log.Warnf("webhook: load project %d: %v", e.ProjectID, err)
+		return
+	}
+
+	payload, err := serializeEvent(q, e, &project)
+	if err != nil {
+		log.Warnf("webhook: serialize %s: %v", e.Category, err)
+		return
+	}
+
+	for i := range hooks {
+		w := &hooks[i]
+		if !w.MatchesEvent(e.Category) {
+			continue
+		}
+		postWebhook(ctx, w, e.Category, fmt.Sprintf("%d", e.ID), payload)
+	}
 }

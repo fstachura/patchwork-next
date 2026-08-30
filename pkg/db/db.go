@@ -126,12 +126,15 @@ func WithBus(ctx context.Context, bus EventBus) context.Context {
 }
 
 func GetBus(ctx context.Context) EventBus {
-	bus := ctx.Value(busCtxKey{}).(EventBus)
-	if bus == nil {
-		panic("Queries.Begin() context has no event bus value")
-	}
+	bus, _ := ctx.Value(busCtxKey{}).(EventBus)
 	return bus
 }
+
+// ProcessEvent is a fallback handler for synchronous event processing.
+// It is called by Commit when no EventBus is available (e.g. in CLI
+// commands that don't start the full async event bus). Set by
+// pkg/events.init() to provide the full pipeline (persist + webhooks).
+var ProcessEvent func(ctx context.Context, database *bun.DB, e *Event)
 
 // Queries provides typed database access methods. It wraps a bun.IDB
 // (either *bun.DB or bun.Tx) and the context for query execution.
@@ -139,6 +142,7 @@ type Queries struct {
 	Ctx           context.Context
 	DB            bun.IDB
 	Events        EventBus
+	database      *bun.DB
 	pendingEvents []Event
 }
 
@@ -150,7 +154,11 @@ func (q *Queries) EnqueueEvent(e Event) {
 		q.pendingEvents = append(q.pendingEvents, e)
 		return
 	}
-	q.Events.Enqueue(&e)
+	if q.Events != nil {
+		q.Events.Enqueue(&e)
+	} else if ProcessEvent != nil && q.database != nil {
+		ProcessEvent(q.Ctx, q.database, &e)
+	}
 }
 
 // New creates a Queries handle without a transaction.
@@ -165,7 +173,12 @@ func Begin(ctx context.Context, database *bun.DB) (*Queries, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Queries{Ctx: ctx, DB: tx, Events: GetBus(ctx)}, nil
+	return &Queries{
+		Ctx:      ctx,
+		DB:       tx,
+		Events:   GetBus(ctx),
+		database: database,
+	}, nil
 }
 
 func (q *Queries) Commit() error {
@@ -176,7 +189,11 @@ func (q *Queries) Commit() error {
 		}
 	}
 	for _, e := range q.pendingEvents {
-		q.Events.Enqueue(&e)
+		if q.Events != nil {
+			q.Events.Enqueue(&e)
+		} else if ProcessEvent != nil && q.database != nil {
+			ProcessEvent(q.Ctx, q.database, &e)
+		}
 	}
 	q.pendingEvents = nil
 	return nil
