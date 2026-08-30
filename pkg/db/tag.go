@@ -35,7 +35,7 @@ func (q *Queries) LoadPatchTags(patches []Patch) error {
 		Count   int    `bun:"count"`
 	}
 	var rows []tagRow
-	if err := q.DB.NewSelect().Model((*PatchTag)(nil)).
+	if err := q.Select((*PatchTag)(nil)).
 		ColumnExpr("patch_tag.patch_id, tag.abbrev, patch_tag.count").
 		Join("JOIN tag ON tag.id = patch_tag.tag_id").
 		Where("patch_tag.patch_id IN ?", bun.Tuple(ids)).
@@ -64,7 +64,7 @@ func (q *Queries) LoadPatchTags(patches []Patch) error {
 func (q *Queries) RefreshTagCounts(patch *Patch) error {
 	// load tags
 	var tags []Tag
-	err := q.DB.NewSelect().Model(&tags).Scan(q.Ctx)
+	err := q.Select(&tags).Scan(q.Ctx)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (q *Queries) RefreshTagCounts(patch *Patch) error {
 	}
 
 	var comments []PatchComment
-	q.DB.NewSelect().Model(&comments).
+	q.Select(&comments).
 		Where("patch_id = ?", patch.ID).
 		Scan(q.Ctx)
 	for _, c := range comments {
@@ -97,7 +97,7 @@ func (q *Queries) RefreshTagCounts(patch *Patch) error {
 		}
 
 		if count == 0 {
-			if _, err := q.DB.NewDelete().Model((*PatchTag)(nil)).
+			if _, err := q.Delete((*PatchTag)(nil)).
 				Where("patch_id = ?", patch.ID).
 				Where("tag_id = ?", tag.ID).
 				Exec(q.Ctx); err != nil {

@@ -45,7 +45,7 @@ func (q *Queries) GetWebhookByID(id int) (*Webhook, error) {
 
 func (q *Queries) GetActiveWebhooks(projectID int) ([]Webhook, error) {
 	var hooks []Webhook
-	err := q.DB.NewSelect().Model(&hooks).
+	err := q.Select(&hooks).
 		Where("project_id = ?", projectID).
 		Where("active = ?", true).
 		Scan(q.Ctx)

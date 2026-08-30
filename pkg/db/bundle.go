@@ -24,8 +24,7 @@ func (q *Queries) LoadBundlePatches(bundles []Bundle) error {
 		Patch
 	}
 	var rows []row
-	if err := q.DB.NewSelect().
-		Model((*BundlePatch)(nil)).
+	if err := q.Select((*BundlePatch)(nil)).
 		ColumnExpr(`bundle_patch.bundle_id, bundle_patch.?, patch.*`, bun.Ident("order")).
 		Join("JOIN patch ON patch.id = bundle_patch.patch_id").
 		Where("bundle_patch.bundle_id IN ?", bun.Tuple(ids)).
@@ -49,7 +48,7 @@ func (q *Queries) LoadBundlePatches(bundles []Bundle) error {
 
 func (q *Queries) ListUserBundles(userID int) ([]Bundle, error) {
 	var bundles []Bundle
-	err := q.DB.NewSelect().Model(&bundles).
+	err := q.Select(&bundles).
 		Where("owner_id = ?", userID).
 		OrderExpr("name ASC").
 		Scan(q.Ctx)

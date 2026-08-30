@@ -7,7 +7,7 @@ package db
 
 func (q *Queries) GetPatchCommentByID(id int) (*PatchComment, error) {
 	var c PatchComment
-	err := q.DB.NewSelect().Model(&c).
+	err := q.Select(&c).
 		Where("id = ?", id).
 		Scan(q.Ctx)
 	return &c, err
@@ -15,7 +15,7 @@ func (q *Queries) GetPatchCommentByID(id int) (*PatchComment, error) {
 
 func (q *Queries) GetCoverCommentByID(id int) (*CoverComment, error) {
 	var c CoverComment
-	err := q.DB.NewSelect().Model(&c).
+	err := q.Select(&c).
 		Where("id = ?", id).
 		Scan(q.Ctx)
 	return &c, err
@@ -23,7 +23,7 @@ func (q *Queries) GetCoverCommentByID(id int) (*CoverComment, error) {
 
 func (q *Queries) ListPatchComments(patchID int) ([]PatchComment, error) {
 	var comments []PatchComment
-	err := q.DB.NewSelect().Model(&comments).
+	err := q.Select(&comments).
 		Relation("Submitter").
 		Where("patch_id = ?", patchID).
 		OrderExpr("date ASC").
@@ -33,7 +33,7 @@ func (q *Queries) ListPatchComments(patchID int) ([]PatchComment, error) {
 
 func (q *Queries) ListCoverComments(coverID int) ([]CoverComment, error) {
 	var comments []CoverComment
-	err := q.DB.NewSelect().Model(&comments).
+	err := q.Select(&comments).
 		Relation("Submitter").
 		Where("cover_id = ?", coverID).
 		OrderExpr("date ASC").

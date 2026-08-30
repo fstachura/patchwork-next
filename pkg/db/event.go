@@ -8,7 +8,7 @@ package db
 import "time"
 
 func (q *Queries) CleanOldEvents(cutoff time.Time) (int64, error) {
-	res, err := q.DB.NewDelete().Model((*Event)(nil)).
+	res, err := q.Delete((*Event)(nil)).
 		Where("date < ?", cutoff).Exec(q.Ctx)
 	if err != nil {
 		return 0, err

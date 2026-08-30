@@ -12,14 +12,12 @@ import (
 )
 
 func (q *Queries) CreateSeries(s *Series) error {
-	return q.DB.NewInsert().Model(s).
-		Returning("*").
-		Scan(q.Ctx)
+	return q.Insert(s)
 }
 
 func (q *Queries) GetSeriesByID(id int) (*Series, error) {
 	var s Series
-	err := q.DB.NewSelect().Model(&s).
+	err := q.Select(&s).
 		Where("id = ?", id).
 		Scan(q.Ctx)
 	return &s, err
@@ -28,14 +26,14 @@ func (q *Queries) GetSeriesByID(id int) (*Series, error) {
 func (q *Queries) FindSeriesByMsgID(msgid string) (*Series, error) {
 	var s Series
 	// check patches first
-	err := q.DB.NewSelect().Model(&s).
+	err := q.Select(&s).
 		Where("id = (SELECT series_id FROM patch WHERE msgid = ? AND series_id IS NOT NULL LIMIT 1)", msgid).
 		Scan(q.Ctx)
 	if err == nil {
 		return &s, nil
 	}
 	// check cover letters
-	err = q.DB.NewSelect().Model(&s).
+	err = q.Select(&s).
 		Where("cover_letter_id = (SELECT id FROM cover WHERE msgid = ? LIMIT 1)", msgid).
 		Scan(q.Ctx)
 	return &s, err
@@ -43,7 +41,7 @@ func (q *Queries) FindSeriesByMsgID(msgid string) (*Series, error) {
 
 func (q *Queries) FindSeriesByReference(projectID int, msgid string) (*Series, error) {
 	var s Series
-	err := q.DB.NewSelect().Model(&s).
+	err := q.Select(&s).
 		Join("JOIN series_reference AS sr ON sr.series_id = series.id").
 		Where("sr.project_id = ?", projectID).
 		Where("sr.msgid = ?", msgid).
@@ -59,7 +57,7 @@ func (q *Queries) FindSeriesByMarkers(
 	dateMin, dateMax time.Time, number *int,
 ) (*Series, error) {
 	var s Series
-	err := q.DB.NewSelect().Model(&s).
+	err := q.Select(&s).
 		Where("project_id = ?", projectID).
 		Where("submitter_id = ?", submitterID).
 		Where("version = ?", version).
@@ -100,7 +98,7 @@ func (q *Queries) FindSeries(
 
 	// tier 1: match by message references
 	if len(refs) > 0 {
-		refQuery := q.DB.NewSelect().Model(&s).
+		refQuery := q.Select(&s).
 			Join("JOIN series_reference AS sr ON sr.series_id = series.id").
 			Where("sr.msgid IN ?", bun.Tuple(refs)).
 			Where("series.project_id = ?", projectID).
@@ -119,7 +117,7 @@ func (q *Queries) FindSeries(
 	}
 
 	// tier 2: match by markers (submitter, version, total, date)
-	markerQuery := q.DB.NewSelect().Model(&s).
+	markerQuery := q.Select(&s).
 		Where("project_id = ?", projectID).
 		Where("submitter_id = ?", submitterID).
 		Where("version = ?", version).
@@ -135,7 +133,7 @@ func (q *Queries) FindPreviousSeriesByName(
 	projectID *int, submitterID int, version int,
 ) ([]Series, error) {
 	var series []Series
-	err := q.DB.NewSelect().Model(&series).
+	err := q.Select(&series).
 		Where("project_id = ?", projectID).
 		Where("submitter_id = ?", submitterID).
 		Where("version = ?", version).
@@ -157,7 +155,7 @@ func (q *Queries) CreateSeriesReference(projectID, seriesID int, msgid string) e
 }
 
 func (q *Queries) UpdateSeriesCoverLetter(id int, coverLetterID *int) error {
-	_, err := q.DB.NewUpdate().Model((*Series)(nil)).
+	_, err := q.Update((*Series)(nil)).
 		Set("cover_letter_id = ?", coverLetterID).
 		Where("id = ?", id).
 		Exec(q.Ctx)
@@ -165,7 +163,7 @@ func (q *Queries) UpdateSeriesCoverLetter(id int, coverLetterID *int) error {
 }
 
 func (q *Queries) UpdateSeriesName(id int, name *string) error {
-	_, err := q.DB.NewUpdate().Model((*Series)(nil)).
+	_, err := q.Update((*Series)(nil)).
 		Set("name = ?", name).
 		Where("id = ?", id).
 		Exec(q.Ctx)
@@ -173,7 +171,7 @@ func (q *Queries) UpdateSeriesName(id int, name *string) error {
 }
 
 func (q *Queries) UpdateSeriesPreviousSeries(id int, previousSeriesID *int) error {
-	_, err := q.DB.NewUpdate().Model((*Series)(nil)).
+	_, err := q.Update((*Series)(nil)).
 		Set("previous_series_id = ?", previousSeriesID).
 		Where("id = ?", id).
 		Exec(q.Ctx)
@@ -182,7 +180,7 @@ func (q *Queries) UpdateSeriesPreviousSeries(id int, previousSeriesID *int) erro
 
 func (q *Queries) ListSeriesPatches(seriesID int) ([]Patch, error) {
 	var patches []Patch
-	err := q.DB.NewSelect().Model(&patches).
+	err := q.Select(&patches).
 		Where("series_id = ?", seriesID).
 		OrderExpr("number ASC").
 		Scan(q.Ctx)
@@ -191,7 +189,7 @@ func (q *Queries) ListSeriesPatches(seriesID int) ([]Patch, error) {
 
 func (q *Queries) GetSeriesMetadata(seriesID int) (map[string]string, error) {
 	var rows []SeriesMetadata
-	err := q.DB.NewSelect().Model(&rows).
+	err := q.Select(&rows).
 		Where("series_id = ?", seriesID).
 		Scan(q.Ctx)
 	if err != nil {
@@ -206,7 +204,7 @@ func (q *Queries) GetSeriesMetadata(seriesID int) (map[string]string, error) {
 
 func (q *Queries) ListNextSeries(seriesID int) ([]Series, error) {
 	var series []Series
-	err := q.DB.NewSelect().Model(&series).
+	err := q.Select(&series).
 		Where("previous_series_id = ?", seriesID).
 		OrderExpr("version ASC").
 		Scan(q.Ctx)
@@ -223,7 +221,7 @@ func (q *Queries) LoadPatchSeries(patches []Patch) error {
 	byID := make(map[int]*Series)
 	if len(seriesIDs) > 0 {
 		var series []Series
-		if err := q.DB.NewSelect().Model(&series).
+		if err := q.Select(&series).
 			Where("id IN ?", bun.Tuple(seriesIDs)).
 			Scan(q.Ctx); err != nil {
 			return err
@@ -257,7 +255,7 @@ func (q *Queries) LoadCoverSeries(covers []Cover) error {
 	}
 
 	var series []Series
-	if err := q.DB.NewSelect().Model(&series).
+	if err := q.Select(&series).
 		Where("cover_letter_id IN ?", bun.Tuple(coverIDs)).
 		Scan(q.Ctx); err != nil {
 		return err

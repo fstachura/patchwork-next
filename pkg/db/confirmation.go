@@ -32,7 +32,7 @@ func (q *Queries) CreateEmailConfirmation(confType, email string, userID *int) (
 		Date:   time.Now(),
 		Active: true,
 	}
-	err := q.DB.NewInsert().Model(conf).Scan(q.Ctx)
+	err := q.Insert(conf)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (q *Queries) CreateEmailConfirmation(confType, email string, userID *int) (
 
 func (q *Queries) CleanExpiredConfirmations() (int64, error) {
 	cutoff := time.Now().Add(-confirmationValidityDays * 24 * time.Hour)
-	res, err := q.DB.NewDelete().Model((*EmailConfirmation)(nil)).
+	res, err := q.Delete((*EmailConfirmation)(nil)).
 		Where("date < ? OR active = ?", cutoff, false).
 		Exec(q.Ctx)
 	if err != nil {
@@ -52,11 +52,11 @@ func (q *Queries) CleanExpiredConfirmations() (int64, error) {
 }
 
 func (q *Queries) CleanInactiveUsers() (int64, error) {
-	res, err := q.DB.NewDelete().Model((*User)(nil)).
+	res, err := q.Delete((*User)(nil)).
 		Where("is_active = ?", false).
 		Where(
 			"id NOT IN ?",
-			q.DB.NewSelect().Model((*EmailConfirmation)(nil)).
+			q.Select((*EmailConfirmation)(nil)).
 				Column("user_id").
 				Where("user_id IS NOT NULL"),
 		).

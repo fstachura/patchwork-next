@@ -41,7 +41,7 @@ func (q *Queries) LoadPatchCheckCounts(patches []Patch) error {
 		Count   int `bun:"count"`
 	}
 	var rows []checkRow
-	if err := q.DB.NewSelect().Model((*Check)(nil)).
+	if err := q.Select((*Check)(nil)).
 		Column("patch_id", "state").
 		ColumnExpr("count(*) AS count").
 		Where("patch_id IN ?", bun.Tuple(ids)).

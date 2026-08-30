@@ -23,7 +23,7 @@ func (q *Queries) CreateSession(userID int) (string, error) {
 		UserID:     userID,
 		ExpireDate: time.Now().Add(sessionMaxAge),
 	}
-	_, err := q.DB.NewInsert().Model(&session).Exec(q.Ctx)
+	err := q.Insert(&session)
 	if err != nil {
 		return "", err
 	}
@@ -32,7 +32,7 @@ func (q *Queries) CreateSession(userID int) (string, error) {
 
 func (q *Queries) GetSessionUser(sessionKey string) (*User, error) {
 	var session Session
-	err := q.DB.NewSelect().Model(&session).
+	err := q.Select(&session).
 		Where("session_key = ?", sessionKey).
 		Where("expire_date > ?", time.Now()).
 		Scan(q.Ctx)
@@ -41,7 +41,7 @@ func (q *Queries) GetSessionUser(sessionKey string) (*User, error) {
 	}
 
 	var user User
-	err = q.DB.NewSelect().Model(&user).
+	err = q.Select(&user).
 		Where("id = ?", session.UserID).
 		Where("is_active = ?", true).
 		Scan(q.Ctx)
@@ -53,14 +53,14 @@ func (q *Queries) GetSessionUser(sessionKey string) (*User, error) {
 }
 
 func (q *Queries) DeleteSession(sessionKey string) error {
-	_, err := q.DB.NewDelete().Model((*Session)(nil)).
+	_, err := q.Delete((*Session)(nil)).
 		Where("session_key = ?", sessionKey).
 		Exec(q.Ctx)
 	return err
 }
 
 func (q *Queries) CleanExpiredSessions() (int64, error) {
-	res, err := q.DB.NewDelete().Model((*Session)(nil)).
+	res, err := q.Delete((*Session)(nil)).
 		Where("expire_date <= ?", time.Now()).
 		Exec(q.Ctx)
 	if err != nil {

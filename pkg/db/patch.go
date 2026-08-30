@@ -9,7 +9,7 @@ import "github.com/uptrace/bun"
 
 func (q *Queries) GetPatchByID(id int) (*Patch, error) {
 	var p Patch
-	err := q.DB.NewSelect().Model(&p).
+	err := q.Select(&p).
 		Where("id = ?", id).
 		Scan(q.Ctx)
 	return &p, err
@@ -24,7 +24,7 @@ func (q *Queries) CreatePatch(patch *Patch) error {
 
 func (q *Queries) GetPatchByProjectAndMsgID(projectID int, msgid string) (*Patch, error) {
 	var p Patch
-	err := q.DB.NewSelect().Model(&p).
+	err := q.Select(&p).
 		Where("project_id = ?", projectID).
 		Where("msgid = ?", msgid).
 		Scan(q.Ctx)
@@ -33,7 +33,7 @@ func (q *Queries) GetPatchByProjectAndMsgID(projectID int, msgid string) (*Patch
 
 func (q *Queries) GetPatchByMsgID(msgid string) ([]Patch, error) {
 	var patches []Patch
-	err := q.DB.NewSelect().Model(&patches).
+	err := q.Select(&patches).
 		Where("msgid = ?", msgid).
 		Scan(q.Ctx)
 	return patches, err
@@ -41,7 +41,7 @@ func (q *Queries) GetPatchByMsgID(msgid string) ([]Patch, error) {
 
 func (q *Queries) FindPatchByCommentMsgID(msgid string) ([]Patch, error) {
 	var patches []Patch
-	err := q.DB.NewSelect().Model(&patches).
+	err := q.Select(&patches).
 		Join("JOIN patch_comment AS pc ON pc.patch_id = patch.id").
 		Where("pc.msgid = ?", msgid).
 		Scan(q.Ctx)
@@ -49,7 +49,7 @@ func (q *Queries) FindPatchByCommentMsgID(msgid string) ([]Patch, error) {
 }
 
 func (q *Queries) UpdatePatchSeries(id int, seriesID *int, number *int) error {
-	_, err := q.DB.NewUpdate().Model((*Patch)(nil)).
+	_, err := q.Update((*Patch)(nil)).
 		Set("series_id = ?", seriesID).
 		Set("number = ?", number).
 		Where("id = ?", id).
@@ -59,7 +59,7 @@ func (q *Queries) UpdatePatchSeries(id int, seriesID *int, number *int) error {
 
 func (q *Queries) GetPatchBySeriesAndNumber(seriesID int, number int) (*Patch, error) {
 	var p Patch
-	err := q.DB.NewSelect().Model(&p).
+	err := q.Select(&p).
 		Where("series_id = ?", seriesID).
 		Where("number = ?", number).
 		Scan(q.Ctx)
@@ -67,7 +67,7 @@ func (q *Queries) GetPatchBySeriesAndNumber(seriesID int, number int) (*Patch, e
 }
 
 func (q *Queries) CountPredecessorPatches(seriesID int, number int) (int, error) {
-	return q.DB.NewSelect().Model((*Patch)(nil)).
+	return q.Select((*Patch)(nil)).
 		Where("series_id = ?", seriesID).
 		Where("number < ?", number).
 		Count(q.Ctx)
@@ -75,7 +75,7 @@ func (q *Queries) CountPredecessorPatches(seriesID int, number int) (int, error)
 
 func (q *Queries) GetSuccessorPatches(seriesID int, number int) ([]Patch, error) {
 	var patches []Patch
-	err := q.DB.NewSelect().Model(&patches).
+	err := q.Select(&patches).
 		Where("series_id = ?", seriesID).
 		Where("number > ?", number).
 		OrderExpr("number ASC").
@@ -84,7 +84,7 @@ func (q *Queries) GetSuccessorPatches(seriesID int, number int) ([]Patch, error)
 }
 
 func (q *Queries) UpdatePatchesBySeriesToState(seriesID, stateID *int) error {
-	_, err := q.DB.NewUpdate().Model((*Patch)(nil)).
+	_, err := q.Update((*Patch)(nil)).
 		Set("state_id = ?", stateID).
 		Where("series_id = ?", seriesID).
 		Exec(q.Ctx)
@@ -92,7 +92,7 @@ func (q *Queries) UpdatePatchesBySeriesToState(seriesID, stateID *int) error {
 }
 
 func (q *Queries) CountPatchesInSeries(seriesID int) (int, error) {
-	return q.DB.NewSelect().Model((*Patch)(nil)).
+	return q.Select((*Patch)(nil)).
 		Where("series_id = ?", seriesID).
 		Count(q.Ctx)
 }
@@ -107,7 +107,7 @@ func (q *Queries) LoadPatchRelated(patches []Patch) error {
 	byRelID := make(map[int][]PatchRef)
 	if len(relatedIDs) > 0 {
 		var related []Patch
-		if err := q.DB.NewSelect().Model(&related).
+		if err := q.Select(&related).
 			Column("id", "name", "related_id").
 			Where("related_id IN ?", bun.Tuple(relatedIDs)).
 			Scan(q.Ctx); err != nil {

@@ -13,7 +13,7 @@ func (q *Queries) GetUserByID(id int) (*User, error) {
 
 func (q *Queries) GetUserByUsername(username string) (*User, error) {
 	var u User
-	err := q.DB.NewSelect().Model(&u).
+	err := q.Select(&u).
 		Where("username = ?", username).
 		Where("is_active = ?", true).
 		Scan(q.Ctx)
@@ -22,7 +22,7 @@ func (q *Queries) GetUserByUsername(username string) (*User, error) {
 
 func (q *Queries) GetUserByEmail(email string) (*User, error) {
 	var u User
-	err := q.DB.NewSelect().Model(&u).
+	err := q.Select(&u).
 		Where("lower(email) = lower(?)", email).
 		Where("is_active = ?", true).
 		Scan(q.Ctx)
@@ -31,7 +31,7 @@ func (q *Queries) GetUserByEmail(email string) (*User, error) {
 
 func (q *Queries) GetUserByToken(token string) (*User, error) {
 	var u User
-	err := q.DB.NewSelect().Model(&u).
+	err := q.Select(&u).
 		Where("id = (SELECT user_id FROM auth_token WHERE key = ?)", token).
 		Scan(q.Ctx)
 	return &u, err

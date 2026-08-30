@@ -7,7 +7,7 @@ package db
 
 func (q *Queries) GetCoverByID(id int) (*Cover, error) {
 	var c Cover
-	err := q.DB.NewSelect().Model(&c).
+	err := q.Select(&c).
 		Where("id = ?", id).
 		Scan(q.Ctx)
 	return &c, err
@@ -22,7 +22,7 @@ func (q *Queries) CreateCover(cover *Cover) error {
 
 func (q *Queries) GetCoverByProjectAndMsgID(projectID int, msgid string) (*Cover, error) {
 	var c Cover
-	err := q.DB.NewSelect().Model(&c).
+	err := q.Select(&c).
 		Where("project_id = ?", projectID).
 		Where("msgid = ?", msgid).
 		Scan(q.Ctx)
@@ -31,7 +31,7 @@ func (q *Queries) GetCoverByProjectAndMsgID(projectID int, msgid string) (*Cover
 
 func (q *Queries) FindCoverByCommentMsgID(msgid string) (*Cover, error) {
 	var c Cover
-	err := q.DB.NewSelect().Model(&c).
+	err := q.Select(&c).
 		Join("JOIN cover_comment AS cc ON cc.cover_id = cover.id").
 		Where("cc.msgid = ?", msgid).
 		Limit(1).

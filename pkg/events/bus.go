@@ -90,7 +90,7 @@ func (b *Bus) worker(id int) {
 		e := item.event
 
 		var project db.Project
-		if err := b.q.DB.NewSelect().Model(&project).
+		if err := b.q.Select(&project).
 			Where("id = ?", e.ProjectID).
 			Scan(b.ctx); err != nil {
 			log.Warnf("webhook: load project %d: %v", e.ProjectID, err)
