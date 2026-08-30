@@ -37,6 +37,12 @@ func ValidateEvents(events string) error {
 	return nil
 }
 
+func (q *Queries) GetWebhookByID(id int) (*Webhook, error) {
+	var hook Webhook
+	err := q.Select(&hook).Where("id = ?", id).Scan(q.Ctx)
+	return &hook, err
+}
+
 func (q *Queries) GetActiveWebhooks(projectID int) ([]Webhook, error) {
 	var hooks []Webhook
 	err := q.DB.NewSelect().Model(&hooks).

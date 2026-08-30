@@ -5,6 +5,12 @@
 
 package db
 
+func (q *Queries) GetUserByID(id int) (*User, error) {
+	var u User
+	err := q.Select(&u).Where("id = ?", id).Scan(q.Ctx)
+	return &u, err
+}
+
 func (q *Queries) GetUserByUsername(username string) (*User, error) {
 	var u User
 	err := q.DB.NewSelect().Model(&u).

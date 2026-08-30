@@ -11,6 +11,12 @@ import (
 	"github.com/uptrace/bun"
 )
 
+func (q *Queries) GetTagByName(name string) (*Tag, error) {
+	var tag Tag
+	err := q.Select(&tag).Where("name = ?", name).Scan(q.Ctx)
+	return &tag, err
+}
+
 func (q *Queries) LoadPatchTags(patches []Patch) error {
 	if len(patches) == 0 {
 		return nil
