@@ -27,7 +27,11 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - run: make test
+      - run: |
+          set -xe
+          sudo add-apt-repository -y ppa:git-core/ppa
+          sudo apt-get install --no-install-recommends -qy git-email libemail-valid-perl libmailtools-perl
+          make test
 
   lint:
     runs-on: ubuntu-latest

@@ -88,9 +88,13 @@ golangci_lint ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 license_exclude = *.md *.asc *.yaml docs/requirements.txt *.service CONTRIBUTORS LICENSE .* go.mod go.sum pkg/mail/testdata docs/deployment/nginx.conf docs/deployment/js_challenge.lua
 
 .PHONY: test
-test:
+test: pw
 	$(GO) generate ./...
 	$(GO) test ./...
+	$Q for t in smoke/*_test.sh; do \
+		echo "[smoke] $$t"; \
+		"$$t" || exit 1; \
+	done
 
 .PHONY: lint
 lint:
