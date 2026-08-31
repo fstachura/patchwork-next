@@ -55,7 +55,7 @@ func (q *Queries) CleanInactiveUsers() (int64, error) {
 	res, err := q.Delete((*User)(nil)).
 		Where("is_active = ?", false).
 		Where(
-			"id NOT IN ?",
+			"id NOT IN (?)",
 			q.Select((*EmailConfirmation)(nil)).
 				Column("user_id").
 				Where("user_id IS NOT NULL"),
