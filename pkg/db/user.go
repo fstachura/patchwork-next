@@ -33,6 +33,7 @@ func (q *Queries) GetUserByToken(token string) (*User, error) {
 	var u User
 	err := q.Select(&u).
 		Where("id = (SELECT user_id FROM auth_token WHERE key = ?)", token).
+		Where("is_active = ?", true).
 		Scan(q.Ctx)
 	return &u, err
 }
