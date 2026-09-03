@@ -8,6 +8,7 @@ package db
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"strconv"
@@ -56,5 +57,5 @@ func CheckPassword(password, encoded string) bool {
 	)
 	hash := base64.StdEncoding.EncodeToString(dk)
 
-	return hash == expected
+	return subtle.ConstantTimeCompare([]byte(hash), []byte(expected)) == 1
 }
