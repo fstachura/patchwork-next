@@ -213,6 +213,11 @@ func readLine(prompt string) (string, error) {
 	return strings.TrimSpace(line), err
 }
 
+// stdinReader is shared across readPassword calls so that a single reader's
+// buffered read-ahead is not discarded between the password and confirmation
+// prompts. A fresh bufio.Reader per call would swallow the second line.
+var stdinReader = bufio.NewReader(os.Stdin)
+
 func readPassword(prompt string) (string, error) {
 	fmt.Fprint(os.Stderr, prompt)
 	if term.IsTerminal(int(os.Stdin.Fd())) {
@@ -220,7 +225,6 @@ func readPassword(prompt string) (string, error) {
 		fmt.Fprintln(os.Stderr)
 		return string(pw), err
 	}
-	reader := bufio.NewReader(os.Stdin)
-	line, err := reader.ReadString('\n')
+	line, err := stdinReader.ReadString('\n')
 	return strings.TrimSpace(line), err
 }

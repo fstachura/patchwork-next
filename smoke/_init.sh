@@ -183,7 +183,6 @@ pw() {
 
 set_password() {
 	printf '%s\n' "$PASSWORD"
-	sleep 0.1
 	printf '%s\n' "$PASSWORD"
 }
 
