@@ -20,6 +20,7 @@ import (
 
 	"github.com/getpatchwork/patchwork/cmd/pw/pw"
 	"github.com/getpatchwork/patchwork/pkg/db"
+	"github.com/getpatchwork/patchwork/pkg/events"
 )
 
 type WebhookCmd struct {
@@ -122,6 +123,10 @@ func (c *WebhookCreateCmd) Run(ctx context.Context) error {
 		return err
 	}
 
+	if err := events.ValidateWebhookURL(ctx, c.URL); err != nil {
+		return err
+	}
+
 	q, err := pw.BeginTx(ctx)
 	if err != nil {
 		return err
@@ -184,6 +189,9 @@ func (c *WebhookUpdateCmd) Run(ctx context.Context) error {
 	q := queries.Update(hook).WherePK()
 	updated := false
 	if c.URL != "" {
+		if err := events.ValidateWebhookURL(ctx, c.URL); err != nil {
+			return err
+		}
 		q = q.Set("url = ?", c.URL)
 		updated = true
 	}

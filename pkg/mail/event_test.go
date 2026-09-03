@@ -14,11 +14,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/getpatchwork/patchwork/pkg/events"
 )
 
 func TestEventCreation(t *testing.T) {
@@ -93,6 +96,11 @@ func TestEventPatchCompletedOrder(t *testing.T) {
 func TestWebhookDelivery(t *testing.T) {
 	var mu sync.Mutex
 	var received []webhookRequest
+
+	// Webhook delivery refuses to dial loopback, so block only the cloud
+	// metadata endpoint for the test and restore the defaults afterwards.
+	events.SetWebhookBlockedCIDRs([]netip.Prefix{netip.MustParsePrefix("169.254.169.254/32")})
+	t.Cleanup(func() { events.SetWebhookBlockedCIDRs(nil) })
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)

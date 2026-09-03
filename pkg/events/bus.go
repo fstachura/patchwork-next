@@ -145,7 +145,7 @@ func postWebhook(
 		req.Header.Set("X-Patchwork-Signature", "sha256="+sig)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := safeWebhookClient.Do(req)
 	if err != nil {
 		log.Warnf("webhook %s: %v", w.URL, err)
 		return

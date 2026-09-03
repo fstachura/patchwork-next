@@ -14,6 +14,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/getpatchwork/patchwork/pkg/db"
+	"github.com/getpatchwork/patchwork/pkg/events"
 	"github.com/getpatchwork/patchwork/pkg/log"
 )
 
@@ -151,12 +152,15 @@ func (h *handler) CreateWebhook(
 	}
 
 	body := &input.Body
-	events := body.Events
-	if events == "" {
-		events = "*"
+	eventList := body.Events
+	if eventList == "" {
+		eventList = "*"
 	}
-	if err := db.ValidateEvents(events); err != nil {
+	if err := db.ValidateEvents(eventList); err != nil {
 		return nil, huma.Error400BadRequest("Invalid event category.")
+	}
+	if err := events.ValidateWebhookURL(ctx, body.URL); err != nil {
+		return nil, huma.Error400BadRequest(err.Error())
 	}
 
 	active := true
@@ -168,7 +172,7 @@ func (h *handler) CreateWebhook(
 		ProjectID: input.ProjectID,
 		URL:       body.URL,
 		Secret:    body.Secret,
-		Events:    events,
+		Events:    eventList,
 		Active:    active,
 		CreatorID: user.ID,
 		Created:   time.Now(),
@@ -206,6 +210,11 @@ func (h *handler) UpdateWebhook(
 	}
 
 	body := &input.Body
+	if body.URL != nil {
+		if err := events.ValidateWebhookURL(ctx, *body.URL); err != nil {
+			return nil, huma.Error400BadRequest(err.Error())
+		}
+	}
 	uq := q.Update(&hook).Where("id = ?", input.WebhookID)
 	if body.URL != nil {
 		uq = uq.Set("url = ?", *body.URL)

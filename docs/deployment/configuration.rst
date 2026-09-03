@@ -178,3 +178,38 @@ Settings Reference
    :default: `"patchwork@localhost"`
 
    Sender email address for outgoing notifications.
+
+.. confval:: [webhook].blocked-cidrs
+   :type: list of CIDR
+   :default: see below
+
+   CIDR ranges that webhook target URLs must not resolve to. This prevents
+   server-side request forgery (SSRF), where a project maintainer could point
+   a webhook at the cloud metadata endpoint or an internal service. A URL is
+   rejected when it is created or updated, and again at delivery time to guard
+   against DNS rebinding.
+
+   Setting this option **replaces** the default list. When left unset, the
+   following internal ranges are blocked:
+
+   .. code-block:: toml
+
+      [webhook]
+      blocked-cidrs = [
+          "0.0.0.0/8",
+          "10.0.0.0/8",
+          "127.0.0.0/8",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.168.0.0/16",
+          "224.0.0.0/4",
+          "::/128",
+          "::1/128",
+          "fc00::/7",
+          "fe80::/10",
+          "ff00::/8",
+      ]
+
+   To allow webhooks to reach a trusted endpoint on an otherwise blocked range,
+   set the option to a narrower list. An empty list disables the protection
+   entirely.

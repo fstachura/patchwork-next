@@ -165,13 +165,16 @@ db_init() {
 
 		[http]
 		listen = "$HTTP_ADDR"
+
+		[webhook]
+		blocked-cidrs = ["169.254.169.254/32"]
 	EOF
 	export PATCHWORK_TOML="$WORKDIR/patchwork.toml"
 	pw db sync
 }
 
 db_count() {
-	sqlite3 "$DB" "SELECT count(*) FROM $1;"
+	sqlite3 -init /dev/null "$DB" "SELECT count(*) FROM $1;"
 }
 
 pw() {

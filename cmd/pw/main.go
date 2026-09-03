@@ -23,6 +23,7 @@ import (
 	"github.com/getpatchwork/patchwork/cmd/pw/pw"
 	"github.com/getpatchwork/patchwork/pkg/config"
 	"github.com/getpatchwork/patchwork/pkg/db"
+	"github.com/getpatchwork/patchwork/pkg/events"
 	"github.com/getpatchwork/patchwork/pkg/log"
 )
 
@@ -59,6 +60,8 @@ func main() {
 	config.RegisterHints("events", admin.EventCategories())
 
 	k := config.Parse(&cli, "Patchwork runtime commands.")
+
+	events.SetWebhookBlockedCIDRs(cli.Webhook.BlockedCIDRs)
 
 	if cli.Syslog {
 		log.InitSyslog("pw-" + k.Command())

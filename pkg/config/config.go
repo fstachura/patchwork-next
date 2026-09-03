@@ -6,6 +6,7 @@
 package config
 
 import (
+	"net/netip"
 	"os"
 
 	"github.com/alecthomas/kong"
@@ -18,6 +19,7 @@ type Config struct {
 	Ingress  IngressConfig  `embed:"" prefix:"ingress-"`
 	Http     HttpConfig     `embed:"" prefix:"http-"`
 	SMTP     SMTPConfig     `embed:"" prefix:"smtp-"`
+	Webhook  WebhookConfig  `embed:"" prefix:"webhook-"`
 }
 
 type DatabaseConfig struct {
@@ -42,6 +44,10 @@ type HttpConfig struct {
 	WebPageMax  int      `help:"Maximum number of items per page in the web interface." default:"500"`
 	ApiPageSize int      `help:"Default number of items per page in the API." default:"30"`
 	ApiPageMax  int      `help:"Maximum number of items per page in the API." default:"250"`
+}
+
+type WebhookConfig struct {
+	BlockedCIDRs []netip.Prefix `name:"blocked-cidrs" help:"CIDR ranges that webhooks must not target, to prevent SSRF. When unset, loopback, private, link-local (incl. the cloud metadata endpoint), multicast and unspecified ranges are blocked. Setting this replaces the default list."`
 }
 
 type SMTPConfig struct {
