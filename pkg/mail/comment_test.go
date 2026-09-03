@@ -135,7 +135,8 @@ func TestCommentOnCorrectParent(t *testing.T) {
 }
 
 func TestCommentActionRequired(t *testing.T) {
-	database, ctx, _, _ := testDB(t, "test.example.com")
+	database, ctx, _, proj := testDB(t, "test.example.com")
+	makeMaintainer(t, database, "test-author@example.com", proj.ID)
 
 	patchMsgID := "<action-patch@test>"
 
@@ -175,7 +176,8 @@ func TestCommentActionRequired(t *testing.T) {
 }
 
 func TestCoverCommentActionRequired(t *testing.T) {
-	database, ctx, _, _ := testDB(t, "test.example.com")
+	database, ctx, _, proj := testDB(t, "test.example.com")
+	makeMaintainer(t, database, "test-author@example.com", proj.ID)
 
 	coverMsgID := "<action-cover@test>"
 	parseEmail(t, ctx, database, "cover body",
@@ -200,7 +202,8 @@ func TestCoverCommentActionRequired(t *testing.T) {
 }
 
 func TestCoverCommentActionRequiredFull(t *testing.T) {
-	database, ctx, _, _ := testDB(t, "test.example.com")
+	database, ctx, _, proj := testDB(t, "test.example.com")
+	makeMaintainer(t, database, "test-author@example.com", proj.ID)
 
 	coverMsgID := "<action-full-cover@test>"
 	parseEmail(t, ctx, database, "cover body",

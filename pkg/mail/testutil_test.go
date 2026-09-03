@@ -86,6 +86,31 @@ func testProject(t *testing.T, database *bun.DB, linkname, name, listid, subject
 	}
 }
 
+// makeMaintainer creates an active user with the given email and grants
+// them maintainer rights on the project so that X-Patchwork-* control
+// headers from that sender are honored.
+func makeMaintainer(t *testing.T, database *bun.DB, email string, projectID int) {
+	t.Helper()
+	ctx := context.Background()
+	var userID int
+	err := database.NewRaw(`
+		INSERT INTO auth_user (username, email, password, is_admin,
+			is_active, date_joined, first_name, last_name,
+			send_email, items_per_page, show_ids)
+		VALUES (?, ?, '', false,
+			true, datetime('now'), '', '',
+			false, 100, false)
+		RETURNING id
+	`, email, email).Scan(ctx, &userID)
+	require.NoError(t, err)
+
+	_, err = database.NewRaw(`
+		INSERT INTO project_maintainer (user_id, project_id)
+		VALUES (?, ?)
+	`, userID, projectID).Exec(ctx)
+	require.NoError(t, err)
+}
+
 // TestDBSetup verifies the test database infrastructure works.
 func TestDBSetup(t *testing.T) {
 	database, _, _, proj := testDB(t, "test.example.com")

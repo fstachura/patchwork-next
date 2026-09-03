@@ -102,8 +102,27 @@ func (p *parser) resolveProjectByIDAndSubject() error {
 	return nil
 }
 
+// senderIsMaintainer reports whether the message sender maps to a user
+// with maintainer rights on the resolved project. The X-Patchwork-*
+// control headers are honored only for such senders, since anyone can
+// set them on a public mailing list.
+func (p *parser) senderIsMaintainer() bool {
+	if p.project == nil || p.from == nil {
+		return false
+	}
+	userID, err := p.db.GetUserIDByEmail(p.from.Address)
+	if err != nil {
+		return false
+	}
+	user, err := p.db.GetUserByID(userID)
+	if err != nil {
+		return false
+	}
+	return p.db.IsMaintainer(user, p.project.ID)
+}
+
 func (p *parser) findState() (*db.State, error) {
-	if name := p.header.Get("X-Patchwork-State"); name != "" {
+	if name := p.header.Get("X-Patchwork-State"); name != "" && p.senderIsMaintainer() {
 		state, err := p.db.GetStateByName(name)
 		if err == nil {
 			log.Debugf("explicit state: %s (id=%d)", state.Name, state.ID)
@@ -115,14 +134,16 @@ func (p *parser) findState() (*db.State, error) {
 }
 
 func (p *parser) findDelegate() *int {
-	addr, _ := mail.ParseAddress(p.header.Get("X-Patchwork-Delegate"))
-	if addr != nil {
-		userID, err := p.db.GetUserIDByEmail(addr.Address)
-		if err == nil {
-			log.Debugf("explicit delegate: %s (user=%d)", addr.Address, userID)
-			return db.Ptr(userID)
+	if hdr := p.header.Get("X-Patchwork-Delegate"); hdr != "" && p.senderIsMaintainer() {
+		addr, _ := mail.ParseAddress(hdr)
+		if addr != nil {
+			userID, err := p.db.GetUserIDByEmail(addr.Address)
+			if err == nil {
+				log.Debugf("explicit delegate: %s (user=%d)", addr.Address, userID)
+				return db.Ptr(userID)
+			}
+			log.Debugf("requested delegate %s not found", addr.Address)
 		}
-		log.Debugf("requested delegate %s not found", addr.Address)
 	}
 
 	if p.content.diff == "" {

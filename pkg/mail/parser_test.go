@@ -135,7 +135,8 @@ func TestDuplicateCoverLetter(t *testing.T) {
 }
 
 func TestInitialPatchState(t *testing.T) {
-	database, ctx, _, _ := testDB(t, "test.example.com")
+	database, ctx, _, proj := testDB(t, "test.example.com")
+	makeMaintainer(t, database, "test-author@example.com", proj.ID)
 
 	t.Run("default state", func(t *testing.T) {
 		err := parseEmail(t, ctx, database, sampleDiff,
@@ -169,7 +170,8 @@ func TestInitialPatchState(t *testing.T) {
 }
 
 func TestInitialPatchStateFull(t *testing.T) {
-	database, ctx, _, _ := testDB(t, "test.example.com")
+	database, ctx, _, proj := testDB(t, "test.example.com")
+	makeMaintainer(t, database, "test-author@example.com", proj.ID)
 
 	t.Run("implicit default state", func(t *testing.T) {
 		parseEmail(t, ctx, database, sampleDiff, withListID("test.example.com"))
@@ -207,7 +209,8 @@ func TestInitialPatchStateFull(t *testing.T) {
 }
 
 func TestDelegateRequest(t *testing.T) {
-	database, ctx, _, _ := testDB(t, "test.example.com")
+	database, ctx, _, proj := testDB(t, "test.example.com")
+	makeMaintainer(t, database, "test-author@example.com", proj.ID)
 
 	database.NewRaw(`
 		INSERT INTO auth_user (username, email, password, is_admin,

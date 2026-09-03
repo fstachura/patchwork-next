@@ -54,7 +54,7 @@ func (p *parser) createPatchComment(patch *db.Patch) error {
 	}
 
 	var addressed *bool
-	if p.header.Has("X-Patchwork-Action-Required") {
+	if p.header.Has("X-Patchwork-Action-Required") && p.senderIsMaintainer() {
 		addressed = db.Ptr(false)
 	}
 
@@ -88,7 +88,7 @@ func (p *parser) createCoverComment(cover *db.Cover) error {
 	}
 
 	var addressed *bool
-	if p.header.Has("X-Patchwork-Action-Required") {
+	if p.header.Has("X-Patchwork-Action-Required") && p.senderIsMaintainer() {
 		addressed = db.Ptr(false)
 	}
 
