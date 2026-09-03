@@ -59,6 +59,13 @@ func (q *Queries) DeleteSession(sessionKey string) error {
 	return err
 }
 
+func (q *Queries) DeleteUserSessions(userID int) error {
+	_, err := q.Delete((*Session)(nil)).
+		Where("user_id = ?", userID).
+		Exec(q.Ctx)
+	return err
+}
+
 func (q *Queries) CleanExpiredSessions() (int64, error) {
 	res, err := q.Delete((*Session)(nil)).
 		Where("expire_date <= ?", time.Now()).

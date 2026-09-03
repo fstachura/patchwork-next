@@ -271,6 +271,22 @@ func (h *webHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		Set("password = ?", db.HashPassword(newPassword)).
 		Exec(ctx)
 
+	// Invalidate every existing session so that a stolen cookie cannot
+	// outlive a password change, then issue a fresh session for the
+	// device performing the change.
+	_ = q.DeleteUserSessions(user.ID)
+	if sessionKey, err := q.CreateSession(user.ID); err == nil {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "sessionid",
+			Value:    sessionKey,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   h.secureCookies(),
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   14 * 24 * 60 * 60,
+		})
+	}
+
 	http.Redirect(w, r, "/user", http.StatusFound)
 }
 
@@ -409,6 +425,10 @@ func (h *webHandler) PasswordResetConfirm(w http.ResponseWriter, r *http.Request
 		Where("id = ?", *conf.UserID).
 		Set("password = ?", db.HashPassword(newPassword)).
 		Exec(ctx)
+
+	// Drop any existing sessions so a reset also locks out whoever may
+	// currently hold a session for this account.
+	_ = q.DeleteUserSessions(*conf.UserID)
 
 	_, _ = q.Update(&conf).
 		Where("id = ?", conf.ID).
