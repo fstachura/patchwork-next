@@ -7,9 +7,7 @@ package db
 
 import (
 	"crypto/rand"
-	"crypto/sha1"
-	"fmt"
-	"math/big"
+	"encoding/hex"
 	"time"
 )
 
@@ -20,9 +18,11 @@ func (c *EmailConfirmation) IsValid() bool {
 }
 
 func (q *Queries) CreateEmailConfirmation(confType, email string, userID *int) (*EmailConfirmation, error) {
-	n, _ := rand.Int(rand.Reader, big.NewInt(1<<31))
-	raw := fmt.Sprintf("%v%s%d", userID, email, n.Int64())
-	key := fmt.Sprintf("%x", sha1.Sum([]byte(raw)))
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return nil, err
+	}
+	key := hex.EncodeToString(buf)
 
 	conf := &EmailConfirmation{
 		Type:   confType,
