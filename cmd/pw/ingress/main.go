@@ -111,6 +111,7 @@ func (c *CLI) startSMTPServer(ctx context.Context) (net.Listener, *smtp.Server, 
 	s.Domain = "localhost"
 	s.ReadTimeout = 30 * time.Second
 	s.WriteTimeout = 30 * time.Second
+	s.MaxMessageBytes = cfg.Ingress.MaxMessageSize
 	s.AllowInsecureAuth = true
 	s.EnableSMTPUTF8 = true
 	s.LMTP = strings.Contains(cfg.Ingress.Listen, "/")

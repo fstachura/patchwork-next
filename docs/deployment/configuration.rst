@@ -143,6 +143,15 @@ Settings Reference
 
    SMTP listen address for the ingress daemon.
 
+.. confval:: [ingress].max-message-size
+   :type: int
+   :default: `26214400`
+
+   Maximum accepted message size in bytes (25 MiB by default). The whole
+   message is buffered and parsed, so a large value lets an unauthenticated
+   sender drive the daemon out of memory. Oversized messages are rejected by
+   the SMTP server before they are buffered.
+
 .. confval:: [smtp].encryption
    :type: enum (`none`, `starttls`, `tls`)
    :default: `none`
