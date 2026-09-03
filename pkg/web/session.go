@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/getpatchwork/patchwork/pkg/db"
 )
@@ -19,6 +20,16 @@ import (
 type contextKey int
 
 const webUserKey contextKey = iota
+
+// dummyPasswordHash is compared against when the submitted username has
+// no account, so the login handler spends roughly the same time as it
+// would verifying a real password. This keeps failed logins from
+// leaking whether a username exists. It is computed lazily on the first
+// login so the expensive hash does not slow down unrelated commands that
+// merely link in this package.
+var dummyPasswordHash = sync.OnceValue(func() string {
+	return db.HashPassword("patchwork-login-timing-guard")
+})
 
 func getWebUser(r *http.Request) *db.User {
 	u, _ := r.Context().Value(webUserKey).(*db.User)
@@ -82,7 +93,17 @@ func (h *webHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 
 	q := db.GetQueries(r.Context())
 	user, err := q.GetUserByUsername(username)
-	if err != nil || !db.CheckPassword(password, user.Password) {
+	var hash string
+	if user != nil {
+		hash = user.Password
+	} else {
+		// Always run a password check, even for an unknown user, so
+		// that a missing account takes about as long as a wrong
+		// password and cannot be distinguished by timing (username
+		// enumeration).
+		hash = dummyPasswordHash()
+	}
+	if !db.CheckPassword(password, hash) || err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		loginPage(pc, "Invalid username or password.", next).Render(r.Context(), w)
 		return
