@@ -91,6 +91,11 @@ func SendEmail(cfg *config.SMTPConfig, to, subject, body string, extraHeaders ma
 	}()
 
 	if cfg.User != "" {
+		// Never hand credentials to a server over a cleartext link.
+		if _, ok := c.TLSConnectionState(); !ok {
+			return fmt.Errorf(
+				"refusing SMTP AUTH over an unencrypted connection")
+		}
 		var auth sasl.Client
 		switch {
 		case c.SupportsAuth(sasl.Plain):
