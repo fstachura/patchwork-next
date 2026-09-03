@@ -148,6 +148,12 @@ func (h *handler) bundleMbox(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user := getAuthUser(ctx)
+	if !bundle.Public && (user == nil || user.ID != bundle.OwnerID) {
+		http.NotFound(w, r)
+		return
+	}
+
 	var project db.Project
 	if err := q.Select(&project).
 		Where("id = ?", bundle.ProjectID).Scan(ctx); err != nil {

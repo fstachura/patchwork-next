@@ -141,6 +141,11 @@ func (h *handler) GetBundle(
 		return nil, huma.Error404NotFound("Not found.")
 	}
 
+	user := getAuthUser(ctx)
+	if !bundle.Public && (user == nil || user.ID != bundle.OwnerID) {
+		return nil, huma.Error404NotFound("Not found.")
+	}
+
 	bundles := []db.Bundle{bundle}
 	if err := q.LoadBundlePatches(bundles); err != nil {
 		log.Errorf("load bundle patches: %v", err)
