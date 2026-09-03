@@ -172,6 +172,23 @@ func (h *webHandler) PatchList(w http.ResponseWriter, r *http.Request) {
 	patchListPage(data).Render(ctx, w)
 }
 
+// canEditPatch reports whether user may modify the given patch. Project
+// maintainers may edit any patch; submitters may edit their own, i.e.
+// patches whose submitter person is linked to their account.
+func (h *webHandler) canEditPatch(q *db.Queries, user *db.User, patch *db.Patch) bool {
+	if user == nil {
+		return false
+	}
+	if q.IsMaintainer(user, patch.ProjectID) {
+		return true
+	}
+	n, _ := q.Select((*db.Person)(nil)).
+		Where("id = ?", patch.SubmitterID).
+		Where("user_id = ?", user.ID).
+		Count(q.Ctx)
+	return n > 0
+}
+
 func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 	if !requireLogin(w, r) {
 		return
@@ -206,6 +223,13 @@ func (h *webHandler) PatchListAction(w http.ResponseWriter, r *http.Request) {
 		uq := q.Update((*db.Patch)(nil)).
 			Where("id IN ?", bun.Tuple(patchIDs)).
 			Where("project_id = ?", project.ID)
+		// Maintainers may update any patch in the project; other users
+		// may only update patches they submitted.
+		if !q.IsMaintainer(user, project.ID) {
+			uq = uq.Where(
+				"submitter_id IN (SELECT id FROM person WHERE user_id = ?)",
+				user.ID)
+		}
 		changed := false
 		if stateID, _ := strconv.ParseInt(r.FormValue("change_state"), 10, 32); stateID > 0 {
 			uq = uq.Set("state_id = ?", stateID)
@@ -392,7 +416,7 @@ func (h *webHandler) PatchDetailPage(w http.ResponseWriter, r *http.Request) {
 	var states []db.State
 	var delegates []db.User
 	canEdit := false
-	if user := getWebUser(r); user != nil {
+	if h.canEditPatch(q, getWebUser(r), &patch) {
 		states, err = q.ListStates()
 		if err != nil {
 			serverErrorPage(w, "list states", err)
@@ -497,6 +521,11 @@ func (h *webHandler) PatchUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !h.canEditPatch(q, getWebUser(r), &patch) {
+		forbiddenPage(w)
+		return
+	}
+
 	oldStateID := patch.StateID
 
 	uq := q.Update(&patch).Where("id = ?", patch.ID)
@@ -561,10 +590,26 @@ func (h *webHandler) CommentAddressed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	project, err := q.GetProjectByLinkname(linkname)
+	if err != nil {
+		notFoundPage(w)
+		return
+	}
+	patch, err := q.GetPatchByProjectAndMsgID(project.ID, msgid)
+	if err != nil {
+		notFoundPage(w)
+		return
+	}
+	if !h.canEditPatch(q, getWebUser(r), patch) {
+		forbiddenPage(w)
+		return
+	}
+
 	addressed := r.FormValue("addressed") == "true"
 	_, _ = q.Update((*db.PatchComment)(nil)).
 		Set("addressed = ?", addressed).
 		Where("id = ?", commentID).
+		Where("patch_id = ?", patch.ID).
 		Exec(q.Ctx)
 
 	http.Redirect(w, r, patchURL(linkname, msgid)+"#comment-"+strconv.FormatInt(int64(commentID), 10), http.StatusFound)

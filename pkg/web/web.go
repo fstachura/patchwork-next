@@ -331,6 +331,11 @@ func notFoundPage(w http.ResponseWriter) {
 	_, _ = w.Write([]byte("Not found"))
 }
 
+func forbiddenPage(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusForbidden)
+	_, _ = w.Write([]byte("Forbidden"))
+}
+
 func serverErrorPage(w http.ResponseWriter, msg string, err error) {
 	log.ErrLogger().Output(3, fmt.Sprintf("%s: %v", msg, err))
 	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
