@@ -24,6 +24,20 @@ func getWebUser(r *http.Request) *db.User {
 	return u
 }
 
+// safeRedirectPath sanitizes a user-supplied "next" destination so it
+// can only point back to this site. Anything that is not a plain local
+// path (absolute URLs, protocol-relative "//host" or "/\host" forms) is
+// rejected in favor of the site root, preventing open redirects.
+func safeRedirectPath(next string) string {
+	if next == "" || next[0] != '/' {
+		return "/"
+	}
+	if len(next) > 1 && (next[1] == '/' || next[1] == '\\') {
+		return "/"
+	}
+	return next
+}
+
 func (h *webHandler) sessionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("sessionid")
@@ -40,10 +54,7 @@ func (h *webHandler) sessionMiddleware(next http.Handler) http.Handler {
 }
 
 func (h *webHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
-	next := r.URL.Query().Get("next")
-	if next == "" {
-		next = "/"
-	}
+	next := safeRedirectPath(r.URL.Query().Get("next"))
 	pc := h.pageCtx(r)
 	loginPage(pc, "", next).Render(r.Context(), w)
 }
@@ -52,10 +63,7 @@ func (h *webHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	next := r.FormValue("next")
-	if next == "" {
-		next = "/"
-	}
+	next := safeRedirectPath(r.FormValue("next"))
 	pc := h.pageCtx(r)
 
 	if !h.validateCSRF(r) {
