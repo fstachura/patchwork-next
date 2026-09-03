@@ -26,7 +26,9 @@ const (
 
 func HashPassword(password string) string {
 	salt := make([]byte, saltLen)
-	rand.Read(salt)
+	if _, err := rand.Read(salt); err != nil {
+		panic("generate password salt: " + err.Error())
+	}
 	saltStr := base64.RawURLEncoding.EncodeToString(salt)
 
 	dk := pbkdf2.Key(

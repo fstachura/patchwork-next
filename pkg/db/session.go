@@ -15,7 +15,9 @@ const sessionMaxAge = 14 * 24 * time.Hour // 2 weeks
 
 func (q *Queries) CreateSession(userID int) (string, error) {
 	key := make([]byte, 20)
-	rand.Read(key)
+	if _, err := rand.Read(key); err != nil {
+		return "", err
+	}
 	sessionKey := hex.EncodeToString(key)
 
 	session := Session{

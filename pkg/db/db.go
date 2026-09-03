@@ -87,7 +87,9 @@ func Open(cfg *config.Config) (*bun.DB, error) {
 		}
 		if path == ":memory:" {
 			var buf [8]byte
-			rand.Read(buf[:])
+			if _, err := rand.Read(buf[:]); err != nil {
+				return nil, err
+			}
 			name := hex.EncodeToString(buf[:])
 			dsn = "file:" + name + "?mode=memory&cache=shared&_pragma=foreign_keys(1)"
 		} else {

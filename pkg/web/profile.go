@@ -310,7 +310,10 @@ func (h *webHandler) GenerateToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := make([]byte, 20)
-	rand.Read(key)
+	if _, err := rand.Read(key); err != nil {
+		serverErrorPage(w, "generate token", err)
+		return
+	}
 	token := hex.EncodeToString(key)
 
 	if err := q.Insert(&db.AuthToken{
