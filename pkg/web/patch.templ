@@ -147,7 +147,13 @@ templ patchDetailPage(d patchDetailData) {
 							if d.Patch.PullURL != nil && *d.Patch.PullURL != "" {
 								<tr>
 									<th>Pull URL</th>
-									<td><a href={ templ.SafeURL(*d.Patch.PullURL) }>{ *d.Patch.PullURL }</a></td>
+									<td>
+										if isURL(*d.Patch.PullURL) {
+											<a href={ templ.SafeURL(*d.Patch.PullURL) }>{ *d.Patch.PullURL }</a>
+										} else {
+											<code>{ *d.Patch.PullURL }</code>
+										}
+									</td>
 								</tr>
 							}
 							if d.Series != nil {
@@ -241,7 +247,7 @@ templ patchDetailPage(d patchDetailData) {
 										@checkState(c.State)
 									</td>
 									<td>
-										if c.TargetURL != "" {
+										if isURL(c.TargetURL) {
 											<a href={ templ.SafeURL(c.TargetURL) }>{ c.Description }</a>
 										} else {
 											{ c.Description }
