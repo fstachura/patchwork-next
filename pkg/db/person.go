@@ -12,9 +12,12 @@ func (q *Queries) GetOrCreatePerson(email, name string) (*Person, error) {
 	if name != "" {
 		p.Name = &name
 	}
+	// Keep an existing non-empty name rather than letting a later
+	// message (possibly spoofing this address) overwrite it. The name
+	// is only filled in when the stored one is missing or empty.
 	err := q.DB.NewInsert().Model(p).
 		On("CONFLICT (email) DO UPDATE").
-		Set("name = EXCLUDED.name").
+		Set("name = COALESCE(NULLIF(person.name, ''), EXCLUDED.name)").
 		Returning("*").
 		Scan(q.Ctx)
 	return p, err
