@@ -68,6 +68,7 @@ func (idx *tableIndex) create(model any, ctx context.Context, database bun.IDB) 
 		tokens = append(tokens, name)
 	}
 	name := strings.Join(tokens, "_")
+	log.Noticef("creating index %q", name)
 	_, err := c.Index(name).Exec(ctx)
 	return err
 }

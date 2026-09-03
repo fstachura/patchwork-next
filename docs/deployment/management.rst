@@ -30,6 +30,15 @@ Database
 Create or update the database schema. On a fresh database, this creates all
 tables. On an existing one, it applies pending migrations.
 
+
+``pw db status``
+~~~~~~~~~~~~~~
+
+.. program:: pw db status
+
+List all database schema migrations and the date at which they were applied.
+
+
 ``pw db export``
 ~~~~~~~~~~~~~~~~
 

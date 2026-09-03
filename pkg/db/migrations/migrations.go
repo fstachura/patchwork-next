@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/uptrace/bun"
 
 	"github.com/getpatchwork/patchwork/pkg/db"
+	"github.com/getpatchwork/patchwork/pkg/log"
 )
 
 type MigrationFunc func(ctx context.Context, tx bun.Tx) error
@@ -64,7 +66,7 @@ func Register(up, down MigrationFunc) {
 	})
 }
 
-type schemaMigration struct {
+type SchemaMigration struct {
 	bun.BaseModel `bun:"table:schema_migrations"`
 	Num           int       `bun:"num,pk"`
 	Name          string    `bun:"name,notnull"`
@@ -73,7 +75,7 @@ type schemaMigration struct {
 
 func ensureTable(ctx context.Context, database bun.IDB) error {
 	_, err := database.NewCreateTable().
-		Model((*schemaMigration)(nil)).
+		Model((*SchemaMigration)(nil)).
 		IfNotExists().
 		Exec(ctx)
 	return err
@@ -81,7 +83,7 @@ func ensureTable(ctx context.Context, database bun.IDB) error {
 
 func lastApplied(ctx context.Context, database *bun.DB) (int, error) {
 	var num int
-	err := database.NewSelect().Model((*schemaMigration)(nil)).
+	err := database.NewSelect().Model((*SchemaMigration)(nil)).
 		ColumnExpr("COALESCE(MAX(num), 0)").
 		Scan(ctx, &num)
 	return num, err
@@ -93,6 +95,22 @@ func sorted() []Migration {
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].Num < out[j].Num
 	})
+	return out
+}
+
+func ListMigrations(ctx context.Context, database *bun.DB) []SchemaMigration {
+	var out []SchemaMigration
+
+	// first get all applied from DB (ignore errors)
+	database.NewSelect().Model(&out).OrderExpr("num ASC").Scan(ctx)
+
+	for _, m := range sorted() {
+		if !slices.ContainsFunc(out, func(s SchemaMigration) bool { return s.Num == m.Num }) {
+			// then, fill in unapplied ones (AppliedAt will be zero)
+			out = append(out, SchemaMigration{Num: m.Num, Name: m.Name})
+		}
+	}
+
 	return out
 }
 
@@ -118,6 +136,8 @@ func RunMigrations(ctx context.Context, database *bun.DB) error {
 			continue
 		}
 
+		log.Noticef("Running database migration %s", m.Name)
+
 		tx, err := database.BeginTx(ctx, nil)
 		if err != nil {
 			return fmt.Errorf("%s: begin tx: %w", m.Name, err)
@@ -128,7 +148,7 @@ func RunMigrations(ctx context.Context, database *bun.DB) error {
 			return fmt.Errorf("%s: %w", m.Name, err)
 		}
 
-		if _, err := tx.NewInsert().Model(&schemaMigration{
+		if _, err := tx.NewInsert().Model(&SchemaMigration{
 			Num:       m.Num,
 			Name:      m.Name,
 			AppliedAt: time.Now(),
@@ -182,7 +202,7 @@ func Rollback(ctx context.Context, database *bun.DB) error {
 		return fmt.Errorf("%s: %w", last.Name, err)
 	}
 
-	if _, err := tx.NewDelete().Model((*schemaMigration)(nil)).
+	if _, err := tx.NewDelete().Model((*SchemaMigration)(nil)).
 		Where("num = ?", last.Num).Exec(ctx); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("%s: remove record: %w", last.Name, err)
@@ -224,7 +244,7 @@ func bootstrap(ctx context.Context, database *bun.DB) error {
 	}
 
 	for _, m := range sorted() {
-		if _, err := tx.NewInsert().Model(&schemaMigration{
+		if _, err := tx.NewInsert().Model(&SchemaMigration{
 			Num:       m.Num,
 			Name:      m.Name,
 			AppliedAt: time.Now(),
