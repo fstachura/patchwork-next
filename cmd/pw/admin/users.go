@@ -104,6 +104,9 @@ func (c *UserCreateCmd) Run(ctx context.Context) error {
 	}
 	err = q.Insert(&user)
 	if err != nil {
+		if db.IsUniqueViolation(err) {
+			return fmt.Errorf("a user with that username already exists")
+		}
 		return err
 	}
 

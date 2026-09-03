@@ -16,7 +16,7 @@ type User struct {
 	bun.BaseModel `bun:"table:auth_user,alias:auth_user" json:"-"`
 
 	ID           int        `bun:"id,pk,autoincrement" json:"id"`
-	Username     string     `bun:"username,notnull" json:"username"`
+	Username     string     `bun:"username,notnull,unique" json:"username"`
 	Password     string     `bun:"password,notnull" json:"-"`
 	FirstName    string     `bun:"first_name,notnull" json:"first_name"`
 	LastName     string     `bun:"last_name,notnull" json:"last_name"`

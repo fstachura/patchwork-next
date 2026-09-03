@@ -57,19 +57,10 @@ func (h *webHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	if len(errors) == 0 {
 		var count int
 		count, _ = q.Select((*db.User)(nil)).
-			Where("LOWER(username) = LOWER(?)", username).
+			Where("username = ?", username).
 			Count(q.Ctx)
 		if count > 0 {
 			errors = append(errors, "A user with that username already exists.")
-		}
-	}
-	if len(errors) == 0 {
-		var count int
-		count, _ = q.Select((*db.User)(nil)).
-			Where("LOWER(email) = LOWER(?)", email).
-			Count(q.Ctx)
-		if count > 0 {
-			errors = append(errors, "A user with that email already exists.")
 		}
 	}
 
@@ -90,6 +81,11 @@ func (h *webHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	err = q.Insert(&user)
 	if err != nil {
+		if db.IsUniqueViolation(err) {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = registerPage(pc, []string{"A user with that username already exists."}).Render(ctx, w)
+			return
+		}
 		log.Errorf("register: insert user: %s", err)
 		_ = registerPage(pc, []string{"Registration failed. Please try again."}).Render(ctx, w)
 		return

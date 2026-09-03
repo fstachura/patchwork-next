@@ -264,3 +264,17 @@ func (q *Queries) Update(model any) *bun.UpdateQuery {
 func (q *Queries) Delete(model any) *bun.DeleteQuery {
 	return q.DB.NewDelete().Model(model)
 }
+
+// IsUniqueViolation reports whether err is a unique constraint violation.
+// The check is done on the driver message because each backend reports it
+// differently (sqlite: "UNIQUE constraint failed", postgres: "duplicate
+// key value violates unique constraint", mysql: "Duplicate entry").
+func IsUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "unique constraint") ||
+		strings.Contains(msg, "duplicate key") ||
+		strings.Contains(msg, "duplicate entry")
+}
