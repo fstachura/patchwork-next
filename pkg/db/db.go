@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
+	"os"
 	"reflect"
 	"strings"
 
@@ -90,6 +91,13 @@ func Open(cfg *config.Config) (*bun.DB, error) {
 			name := hex.EncodeToString(buf[:])
 			dsn = "file:" + name + "?mode=memory&cache=shared&_pragma=foreign_keys(1)"
 		} else {
+			// The database holds password hashes, API tokens and
+			// sessions. Make sure the file is not world-readable by
+			// creating it (or tightening it) with owner-only perms
+			// before the driver opens it.
+			if err := restrictDBFile(path); err != nil {
+				return nil, err
+			}
 			q := u.Query()
 			if !q.Has("_pragma") {
 				q.Add("_pragma", "foreign_keys(1)")
@@ -110,6 +118,22 @@ func Open(cfg *config.Config) (*bun.DB, error) {
 	}
 
 	return bun.NewDB(conn, dialect), nil
+}
+
+// restrictDBFile ensures the sqlite database file exists with
+// owner-only (0600) permissions before the driver opens it. Existing
+// files created with a laxer umask are tightened as well. The companion
+// -wal and -shm files sqlite may create inherit these permissions.
+func restrictDBFile(path string) error {
+	f, err := os.OpenFile(path, os.O_CREATE, 0o600)
+	if err != nil {
+		return fmt.Errorf("open %s: %w", path, err)
+	}
+	_ = f.Close()
+	if err := os.Chmod(path, 0o600); err != nil {
+		return fmt.Errorf("chmod %s: %w", path, err)
+	}
+	return nil
 }
 
 // EventBus is the interface satisfied by *events.Bus. Defined here to
