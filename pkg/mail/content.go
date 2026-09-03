@@ -55,6 +55,7 @@ func findTextParts(m *mail.Reader) []textPart {
 			continue
 		}
 
+		buf.Reset()
 		if n, err := io.Copy(&buf, part.Body); err != nil {
 			log.Warnf("failed to read part body: %s", err)
 			continue
@@ -66,8 +67,6 @@ func findTextParts(m *mail.Reader) []textPart {
 			payload: strings.ReplaceAll(buf.String(), "\r\n", "\n"),
 			subtype: subtype,
 		})
-
-		buf.Reset()
 	}
 
 	return results
