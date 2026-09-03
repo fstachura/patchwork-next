@@ -52,7 +52,19 @@ func Middleware(database *bun.DB, bus EventBus) func(http.Handler) http.Handler 
 			}
 			ctx = context.WithValue(ctx, queriesKey{}, q)
 			rw := &statusWriter{ResponseWriter: w}
+			// Ensure the transaction is rolled back if the handler
+			// panics (the panic then propagates to the recoverer);
+			// the normal paths below set handled and take over.
+			handled := false
+			defer func() {
+				if !handled {
+					if err := q.Rollback(); err != nil {
+						log.Printf("rollback: %v", err)
+					}
+				}
+			}()
 			next.ServeHTTP(rw, r.WithContext(ctx))
+			handled = true
 			if rw.status >= 400 {
 				if err := q.Rollback(); err != nil {
 					log.Printf("rollback: %v", err)
