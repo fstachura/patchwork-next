@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"strings"
 
 	"github.com/getpatchwork/patchwork/pkg/db"
 )
@@ -22,6 +23,14 @@ const webUserKey contextKey = iota
 func getWebUser(r *http.Request) *db.User {
 	u, _ := r.Context().Value(webUserKey).(*db.User)
 	return u
+}
+
+// secureCookies reports whether session cookies must carry the Secure
+// attribute. It is derived from the configured base URL so that HTTPS
+// deployments (including those terminating TLS at a reverse proxy) get
+// Secure cookies while plain-HTTP setups keep working.
+func (h *webHandler) secureCookies() bool {
+	return strings.HasPrefix(h.cfg.Http.BaseURL, "https://")
 }
 
 // safeRedirectPath sanitizes a user-supplied "next" destination so it
@@ -91,6 +100,7 @@ func (h *webHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		Value:    sessionKey,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   h.secureCookies(),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   14 * 24 * 60 * 60,
 	})
@@ -109,6 +119,7 @@ func (h *webHandler) LogoutSubmit(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   h.secureCookies(),
 		MaxAge:   -1,
 	})
 
