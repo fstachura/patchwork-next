@@ -49,6 +49,13 @@ func (c *CLI) Run(ctx context.Context) error {
 		Addr:     cfg.Http.Listen,
 		Handler:  router,
 		ErrorLog: log.ErrLogger(),
+		// Bound how long a client may take to send a request so that
+		// idle or slow connections cannot pile up and exhaust the
+		// server (slowloris). WriteTimeout is left unset because mbox
+		// downloads can legitimately take a long time for slow clients.
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 	sock, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
