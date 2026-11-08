@@ -122,6 +122,16 @@ templ profilePage(d profileData) {
 								</td>
 							</tr>
 							<tr>
+								<th>Send emails</th>
+								<td>
+									if d.User.SendEmail {
+										<input type="checkbox" name="send_email" checked/>
+									} else {
+										<input type="checkbox" name="send_email"/>
+									}
+								</td>
+							</tr>
+							<tr>
 								<td colspan="2"><button type="submit">Apply</button></td>
 							</tr>
 						</table>

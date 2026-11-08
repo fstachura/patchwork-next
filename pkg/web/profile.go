@@ -124,11 +124,13 @@ func (h *webHandler) ProfileUpdate(w http.ResponseWriter, r *http.Request) {
 		itemsPerPage = 100
 	}
 	showIds := r.FormValue("show_ids") == "on"
+	sendEmail := r.FormValue("send_email") == "on"
 
 	_, _ = q.Update((*db.User)(nil)).
 		Where("id = ?", user.ID).
 		Set("items_per_page = ?", itemsPerPage).
 		Set("show_ids = ?", showIds).
+		Set("send_email = ?", sendEmail).
 		Exec(ctx)
 
 	http.Redirect(w, r, "/user", http.StatusFound)
