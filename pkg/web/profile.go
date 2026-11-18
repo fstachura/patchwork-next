@@ -28,6 +28,7 @@ type profileData struct {
 	Token               string
 	MaintainerProjects  []db.Project
 	ContributorProjects []db.Project
+	ItemsPerPage        int
 }
 
 type linkedEmail struct {
@@ -93,6 +94,11 @@ func (h *webHandler) ProfilePage(w http.ResponseWriter, r *http.Request) {
 		OrderExpr("project.name ASC").
 		Scan(ctx)
 
+	itemsPerPage := user.ItemsPerPage
+	if itemsPerPage == 0 {
+		itemsPerPage = h.cfg.Http.WebPageSize
+	}
+
 	data := profileData{
 		PC:                  pc,
 		User:                user,
@@ -101,6 +107,7 @@ func (h *webHandler) ProfilePage(w http.ResponseWriter, r *http.Request) {
 		Token:               token,
 		MaintainerProjects:  maintainerProjects,
 		ContributorProjects: contributorProjects,
+		ItemsPerPage:        itemsPerPage,
 	}
 	profilePage(data).Render(ctx, w)
 }
@@ -120,7 +127,9 @@ func (h *webHandler) ProfileUpdate(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 	itemsPerPage, _ := strconv.Atoi(r.FormValue("items_per_page"))
-	if itemsPerPage < 1 {
+	if itemsPerPage == h.cfg.Http.WebPageSize {
+		itemsPerPage = 0
+	} else if itemsPerPage < 1 {
 		itemsPerPage = 100
 	}
 	showIds := r.FormValue("show_ids") == "on"
