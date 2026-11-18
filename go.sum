@@ -91,6 +91,8 @@ github.com/uptrace/bun/dialect/pgdialect v1.3.0 h1:0ZkGqGugxaPCxko4DV2f4d7i+FnM2
 github.com/uptrace/bun/dialect/pgdialect v1.3.0/go.mod h1:kP5HGEpAX8iJCqj3WHm04XnoeBPacdCN1P2HiwMtHpg=
 github.com/uptrace/bun/dialect/sqlitedialect v1.3.0 h1:XzxkORYksxkLsIQLJHFYUb3yDvqSQHzTungyKpJhHTw=
 github.com/uptrace/bun/dialect/sqlitedialect v1.3.0/go.mod h1:x2D1sY50Itio0I/FVdNe30oMUT2ObiAS+oILcMR+Wys=
+github.com/uptrace/bun/extra/bundebug v1.3.0 h1:mqO0OdoTz0uV9+gFTJ04v/9HzPhV498R0HmvCtar9u8=
+github.com/uptrace/bun/extra/bundebug v1.3.0/go.mod h1:bkqioiH6Jdpz3NmR5mDekK5mOG+v81qpQnzAaRtERc4=
 github.com/vmihailenco/msgpack/v5 v5.4.1 h1:cQriyiUvjTwOHg8QZaPihLWeRAAVoCpE00IUPn0Bjt8=
 github.com/vmihailenco/msgpack/v5 v5.4.1/go.mod h1:GaZTsDaehaPpQVyxrf5mtQlH+pc21PIudVV/E3rRQok=
 github.com/vmihailenco/tagparser/v2 v2.0.0 h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAhO7/IwNM9g=

@@ -22,6 +22,7 @@ import (
 	"github.com/uptrace/bun/dialect/mysqldialect"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
+	"github.com/uptrace/bun/extra/bundebug"
 	"github.com/uptrace/bun/schema"
 	_ "modernc.org/sqlite" // register sqlite driver
 
@@ -126,7 +127,14 @@ func Open(cfg *config.Config) (*bun.DB, error) {
 		return nil, fmt.Errorf("sql.Open(%s): %w", driver, err)
 	}
 
-	return bun.NewDB(conn, dialect), nil
+	db := bun.NewDB(conn, dialect)
+	db.AddQueryHook(
+		bundebug.NewQueryHook(
+			bundebug.WithEnabled(false),
+			bundebug.FromEnv("BUNDEBUG"),
+		),
+	)
+	return db, nil
 }
 
 // parseSqliteURL rebuilds a URL for sqlite DSNs that url.Parse rejects,
