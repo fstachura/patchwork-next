@@ -192,8 +192,8 @@ func randTextBlock(lines uint32, lineLen uint32) string {
 	result := make([]byte, (lineLen+1)*lines)
 	for i := range lines {
 		line := randString(lineLen)
-		copy(result[i*lineLen+1:], []byte(line))
-		result[(i+1)*lineLen] = '\n'
+		copy(result[i*(lineLen+1):], []byte(line))
+		result[i*(lineLen+1)+lineLen] = '\n'
 	}
 	return string(result)
 }
