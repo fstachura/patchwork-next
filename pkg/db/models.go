@@ -426,6 +426,14 @@ type Event struct {
 	CoverCommentID     *int      `bun:"cover_comment_id" json:"-" fk:"cover_comment.id,cascade"`
 	PatchCommentID     *int      `bun:"patch_comment_id" json:"-" fk:"patch_comment.id,cascade"`
 
+	Patch         *Patch        `bun:"rel:has-one,join:patch_id=id" json:"-"`
+	Series        *Series       `bun:"rel:has-one,join:series_id=id" json:"-"`
+	Cover         *Cover        `bun:"rel:has-one,join:cover_id=id" json:"-"`
+	PatchComment  *PatchComment `bun:"rel:has-one,join:patch_comment_id=id" json:"-"`
+	CoverComment  *CoverComment `bun:"rel:has-one,join:cover_comment_id=id" json:"-"`
+	PreviousState *State        `bun:"rel:has-one,join:previous_state_id=id" json:"-"`
+	CurrentState  *State        `bun:"rel:has-one,join:current_state_id=id" json:"-"`
+
 	Project *Project `bun:"rel:belongs-to,join:project_id=id" json:"project,omitempty"`
 	Actor   *User    `bun:"rel:belongs-to,join:actor_id=id" json:"actor"`
 	Payload any      `bun:"-" json:"payload,omitempty"`

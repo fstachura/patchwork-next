@@ -67,7 +67,16 @@ func (h *handler) ListEvents(
 	}
 
 	var events []db.Event
-	if err := sq.Model(&events).Relation("Project").Relation("Actor").
+	if err := sq.Model(&events).
+		Relation("Project").
+		Relation("Actor").
+		Relation("Patch", db.WithColumns("id", "msgid", "date", "name")).
+		Relation("Series", db.WithColumns("id", "name", "date", "version")).
+		Relation("Cover", db.WithColumns("id", "msgid", "date", "name")).
+		Relation("PatchComment", db.WithColumns("id", "msgid", "date")).
+		Relation("CoverComment", db.WithColumns("id", "msgid", "date")).
+		Relation("PreviousState", db.WithColumns("id", "slug")).
+		Relation("CurrentState", db.WithColumns("id", "slug")).
 		OrderExpr(order).Offset(offset).Limit(perPage).Scan(ctx); err != nil {
 		log.Errorf("list events: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
@@ -118,67 +127,46 @@ func applyEventFilters(q *bun.SelectQuery, input *ListEventsInput) *bun.SelectQu
 func buildEventPayload(ctx context.Context, q *db.Queries, e *db.Event) map[string]any {
 	m := map[string]any{}
 
-	if e.PatchID != nil {
-		var p db.Patch
-		if err := q.Select(&p).
-			Where("id = ?", *e.PatchID).Scan(ctx); err == nil {
-			m["patch"] = map[string]any{
-				"id": p.ID, "msgid": p.Msgid,
-				"date": p.Date, "name": p.Name,
-			}
+	if e.Patch != nil {
+		p := e.Patch
+		m["patch"] = map[string]any{
+			"id": p.ID, "msgid": p.Msgid,
+			"date": p.Date, "name": p.Name,
 		}
 	}
-	if e.SeriesID != nil {
-		var s db.Series
-		if err := q.Select(&s).
-			Where("id = ?", *e.SeriesID).Scan(ctx); err == nil {
-			m["series"] = map[string]any{
-				"id": s.ID, "name": s.Name,
-				"date": s.Date, "version": s.Version,
-			}
+	if e.Series != nil {
+		s := e.Series
+		m["series"] = map[string]any{
+			"id": s.ID, "name": s.Name,
+			"date": s.Date, "version": s.Version,
 		}
 	}
-	if e.CoverID != nil {
-		var c db.Cover
-		if err := q.Select(&c).
-			Where("id = ?", *e.CoverID).Scan(ctx); err == nil {
-			m["cover"] = map[string]any{
-				"id": c.ID, "msgid": c.Msgid,
-				"date": c.Date, "name": c.Name,
-			}
+	if e.Cover != nil {
+		c := e.Cover
+		m["cover"] = map[string]any{
+			"id": c.ID, "msgid": c.Msgid,
+			"date": c.Date, "name": c.Name,
 		}
 	}
-	if e.PatchCommentID != nil {
-		var c db.PatchComment
-		if err := q.Select(&c).
-			Where("id = ?", *e.PatchCommentID).Scan(ctx); err == nil {
-			m["comment"] = map[string]any{
-				"id": c.ID, "msgid": c.Msgid, "date": c.Date,
-			}
+	if e.PatchComment != nil {
+		c := e.PatchComment
+		m["comment"] = map[string]any{
+			"id": c.ID, "msgid": c.Msgid, "date": c.Date,
 		}
 	}
-	if e.CoverCommentID != nil {
-		var c db.CoverComment
-		if err := q.Select(&c).
-			Where("id = ?", *e.CoverCommentID).Scan(ctx); err == nil {
-			m["comment"] = map[string]any{
-				"id": c.ID, "msgid": c.Msgid, "date": c.Date,
-			}
+	if e.CoverComment != nil {
+		c := e.CoverComment
+		m["comment"] = map[string]any{
+			"id": c.ID, "msgid": c.Msgid, "date": c.Date,
 		}
 	}
-	if e.PreviousStateID != nil {
-		var s db.State
-		if err := q.Select(&s).
-			Where("id = ?", *e.PreviousStateID).Scan(ctx); err == nil {
-			m["previous_state"] = s.Slug
-		}
+	if e.PreviousState != nil {
+		s := e.PreviousState
+		m["previous_state"] = s.Slug
 	}
-	if e.CurrentStateID != nil {
-		var s db.State
-		if err := q.Select(&s).
-			Where("id = ?", *e.CurrentStateID).Scan(ctx); err == nil {
-			m["current_state"] = s.Slug
-		}
+	if e.CurrentState != nil {
+		s := e.CurrentState
+		m["current_state"] = s.Slug
 	}
 
 	if len(m) == 0 {
