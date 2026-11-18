@@ -71,8 +71,7 @@ func (h *handler) ListSeries(
 	offset, perPage := input.offsetPage(h.cfg)
 
 	var series []db.Series
-	if err := sq.Model(&series).
-		Relation("Submitter").Relation("Project").
+	if err := defaultSeriesRelations(sq.Model(&series)).
 		OrderExpr("series.id DESC").Offset(offset).Limit(perPage).Scan(ctx); err != nil {
 		log.Errorf("list series: %v", err)
 		return nil, huma.Error500InternalServerError("Internal error.")
@@ -106,8 +105,7 @@ func (h *handler) LetSeries(
 	q := db.GetQueries(ctx)
 
 	var s db.Series
-	if err := q.Select(&s).
-		Relation("Submitter").Relation("Project").
+	if err := defaultSeriesRelations(q.Select(&s)).
 		Where("series.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
@@ -171,8 +169,7 @@ func (h *handler) UpdateSeries(
 	}
 
 	// Re-fetch with relations after update.
-	if err := q.Select(&s).
-		Relation("Submitter").Relation("Project").
+	if err := defaultSeriesRelations(q.Select(&s)).
 		Where("series.id = ?", input.ID).Scan(ctx); err != nil {
 		return nil, huma.Error404NotFound("Not found.")
 	}
@@ -298,4 +295,17 @@ func coverToEmbedded(c *db.Cover, project *db.Project, base string) CoverEmbedde
 		e.ListArchiveURL = &archiveURL
 	}
 	return e
+}
+
+func defaultSeriesRelations(q *bun.SelectQuery) *bun.SelectQuery {
+	return q.
+		Relation("Submitter").
+		Relation("Project").
+		Relation("SeriesMetadata").
+		Relation("SeriesDependencies").
+		Relation("SeriesDependants").
+		Relation("NextSeries").
+		Relation("CoverLetter", db.WithColumns("id", "msgid", "date", "name")).
+		Relation("Patches", db.WithColumns("id", "msgid", "date", "name", "series_id")).
+		Relation("Patches", db.WithColumns("id", "msgid", "date", "name", "series_id"))
 }

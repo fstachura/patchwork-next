@@ -49,60 +49,22 @@ func loadSeriesDetail(ctx context.Context, q *db.Queries, base string, series []
 	for i := range series {
 		s := &series[i]
 
-		count, err := q.Select((*db.Patch)(nil)).
-			Where("series_id = ?", s.ID).
-			Count(ctx)
-		if err != nil {
-			log.Errorf("count series patches: %v", err)
-		}
-		s.ReceivedTotal = int(count)
-		s.ReceivedAll = count >= int64(s.Total)
+		s.ReceivedTotal = int(len(s.Patches))
+		s.ReceivedAll = len(s.Patches) >= s.Total
 
-		if s.CoverLetterID != nil {
-			var cover db.Cover
-			if err := q.Select(&cover).
-				Where("id = ?", *s.CoverLetterID).
-				Scan(ctx); err == nil {
-				s.CoverLetter = &cover
-			}
+		s.Metadata = make(map[string]string)
+		for _, r := range s.SeriesMetadata {
+			s.Metadata[r.Key] = r.Value
 		}
 
-		patches, err := q.ListSeriesPatches(s.ID)
-		if err != nil {
-			log.Errorf("load series patches: %v", err)
-		}
-		if patches == nil {
-			patches = []db.Patch{}
-		}
-		s.Patches = patches
-
-		s.Metadata, err = q.GetSeriesMetadata(s.ID)
-		if err != nil {
-			log.Errorf("load series metadata: %v", err)
+		s.Dependencies = make([]string, len(s.SeriesDependencies))
+		for j, d := range s.SeriesDependencies {
+			s.Dependencies[j] = fmt.Sprintf("%s/series/%d", base, d.ID)
 		}
 
-		var depIDs []int
-		if err := q.Select((*db.SeriesDependencies)(nil)).
-			Column("to_series_id").
-			Where("from_series_id = ?", s.ID).
-			Scan(ctx, &depIDs); err != nil {
-			log.Errorf("load series dependencies: %v", err)
-		}
-		s.Dependencies = make([]string, len(depIDs))
-		for j, id := range depIDs {
-			s.Dependencies[j] = fmt.Sprintf("%s/series/%d", base, id)
-		}
-
-		var revIDs []int
-		if err := q.Select((*db.SeriesDependencies)(nil)).
-			Column("from_series_id").
-			Where("to_series_id = ?", s.ID).
-			Scan(ctx, &revIDs); err != nil {
-			log.Errorf("load series dependents: %v", err)
-		}
-		s.Dependents = make([]string, len(revIDs))
-		for j, id := range revIDs {
-			s.Dependents[j] = fmt.Sprintf("%s/series/%d", base, id)
+		s.Dependents = make([]string, len(s.SeriesDependants))
+		for j, d := range s.SeriesDependants {
+			s.Dependents[j] = fmt.Sprintf("%s/series/%d", base, d.ID)
 		}
 
 		if s.PreviousSeriesID != nil {
@@ -110,13 +72,9 @@ func loadSeriesDetail(ctx context.Context, q *db.Queries, base string, series []
 			s.PreviousSeries = &u
 		}
 
-		nextSeriesList, err := q.ListNextSeries(s.ID)
-		if err != nil {
-			log.Errorf("load next series: %v", err)
-		}
-		s.NextSeries = make([]string, len(nextSeriesList))
-		for j, ns := range nextSeriesList {
-			s.NextSeries[j] = fmt.Sprintf("%s/series/%d", base, ns.ID)
+		s.NextSeriesLinks = make([]string, len(s.NextSeries))
+		for j, ns := range s.NextSeries {
+			s.NextSeriesLinks[j] = fmt.Sprintf("%s/series/%d", base, ns.ID)
 		}
 	}
 }

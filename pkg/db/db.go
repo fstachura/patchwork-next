@@ -315,3 +315,10 @@ func IsUniqueViolation(err error) bool {
 		strings.Contains(msg, "duplicate key") ||
 		strings.Contains(msg, "duplicate entry")
 }
+
+// Helper to pass list of columns to bun.SelectQuery.Relation
+func WithColumns(columns ...string) func(q *bun.SelectQuery) *bun.SelectQuery {
+	return func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Column(columns...)
+	}
+}

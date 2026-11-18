@@ -153,19 +153,24 @@ type Series struct {
 
 	Submitter *Person  `bun:"rel:belongs-to,join:submitter_id=id" json:"submitter,omitempty"`
 	Project   *Project `bun:"rel:belongs-to,join:project_id=id" json:"project,omitempty"`
+	Patches   []Patch  `bun:"rel:has-many,join:id=series_id" json:"patches"`
 
-	URL            string            `bun:"-" json:"url,omitempty"`
-	WebURL         string            `bun:"-" json:"web_url,omitempty"`
-	MboxURL        string            `bun:"-" json:"mbox,omitempty"`
-	ReceivedTotal  int               `bun:"-" json:"received_total"`
-	ReceivedAll    bool              `bun:"-" json:"received_all"`
-	CoverLetter    *Cover            `bun:"-" json:"cover_letter"`
-	Patches        []Patch           `bun:"-" json:"patches"`
-	Metadata       map[string]string `bun:"-" json:"metadata"`
-	Dependencies   []string          `bun:"-" json:"dependencies"`
-	Dependents     []string          `bun:"-" json:"dependents"`
-	PreviousSeries *string           `bun:"-" json:"previous_series"`
-	NextSeries     []string          `bun:"-" json:"next_series"`
+	SeriesMetadata     []SeriesMetadata     `bun:"rel:has-many,join:id=series_id" json:"-"`
+	SeriesDependencies []SeriesDependencies `bun:"rel:has-many,join:id=from_series_id" json:"-"`
+	SeriesDependants   []SeriesDependencies `bun:"rel:has-many,join:id=to_series_id" json:"-"`
+	NextSeries         []Series             `bun:"rel:has-many,join:id=previous_series_id" json:"-"`
+	CoverLetter        *Cover               `bun:"rel:has-one,join:cover_letter_id=id" json:"cover_letter"`
+
+	URL             string            `bun:"-" json:"url,omitempty"`
+	WebURL          string            `bun:"-" json:"web_url,omitempty"`
+	MboxURL         string            `bun:"-" json:"mbox,omitempty"`
+	ReceivedTotal   int               `bun:"-" json:"received_total"`
+	ReceivedAll     bool              `bun:"-" json:"received_all"`
+	Metadata        map[string]string `bun:"-" json:"metadata"`
+	Dependencies    []string          `bun:"-" json:"dependencies"`
+	Dependents      []string          `bun:"-" json:"dependents"`
+	PreviousSeries  *string           `bun:"-" json:"previous_series"`
+	NextSeriesLinks []string          `bun:"-" json:"next_series"`
 }
 
 type SeriesMetadata struct {
